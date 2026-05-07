@@ -16,27 +16,37 @@ export type Database = {
     Tables: {
       comments: {
         Row: {
-          author_name: string
+          author_name: string | null
           body: string
           created_at: string
           id: string
+          lead_id: string | null
           site_id: string
         }
         Insert: {
-          author_name: string
+          author_name?: string | null
           body: string
           created_at?: string
           id?: string
+          lead_id?: string | null
           site_id: string
         }
         Update: {
-          author_name?: string
+          author_name?: string | null
           body?: string
           created_at?: string
           id?: string
+          lead_id?: string | null
           site_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "comments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "comments_site_id_fkey"
             columns: ["site_id"]
@@ -46,26 +56,57 @@ export type Database = {
           },
         ]
       }
+      leads: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           created_at: string
           id: string
+          lead_id: string | null
           site_id: string
           visitor_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          lead_id?: string | null
           site_id: string
           visitor_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          lead_id?: string | null
           site_id?: string
           visitor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "likes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "likes_site_id_fkey"
             columns: ["site_id"]
@@ -81,6 +122,7 @@ export type Database = {
           height: number | null
           id: string
           image_url: string
+          sort_order: number
           title: string | null
           width: number | null
         }
@@ -89,6 +131,7 @@ export type Database = {
           height?: number | null
           id?: string
           image_url: string
+          sort_order?: number
           title?: string | null
           width?: number | null
         }
@@ -97,6 +140,7 @@ export type Database = {
           height?: number | null
           id?: string
           image_url?: string
+          sort_order?: number
           title?: string | null
           width?: number | null
         }
