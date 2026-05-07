@@ -58,18 +58,21 @@ export type Database = {
       }
       leads: {
         Row: {
+          company_name: string | null
           created_at: string
           id: string
           name: string
           slug: string
         }
         Insert: {
+          company_name?: string | null
           created_at?: string
           id?: string
           name: string
           slug: string
         }
         Update: {
+          company_name?: string | null
           created_at?: string
           id?: string
           name?: string
