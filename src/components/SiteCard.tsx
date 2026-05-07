@@ -25,6 +25,7 @@ export function SiteCard({
   liked,
   commentsCount,
   busy,
+  linkUrl,
   onToggleLike,
   onSubmitComment,
   onZoom,
