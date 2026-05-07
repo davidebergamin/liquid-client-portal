@@ -21,7 +21,8 @@ export type Database = {
           created_at: string
           id: string
           lead_id: string | null
-          site_id: string
+          lead_site_id: string | null
+          site_id: string | null
         }
         Insert: {
           author_name?: string | null
@@ -29,7 +30,8 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
-          site_id: string
+          lead_site_id?: string | null
+          site_id?: string | null
         }
         Update: {
           author_name?: string | null
@@ -37,7 +39,8 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
-          site_id?: string
+          lead_site_id?: string | null
+          site_id?: string | null
         }
         Relationships: [
           {
@@ -55,6 +58,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lead_sites: {
+        Row: {
+          created_at: string
+          height: number | null
+          id: string
+          image_url: string
+          lead_id: string
+          title: string | null
+          width: number | null
+        }
+        Insert: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          image_url: string
+          lead_id: string
+          title?: string | null
+          width?: number | null
+        }
+        Update: {
+          created_at?: string
+          height?: number | null
+          id?: string
+          image_url?: string
+          lead_id?: string
+          title?: string | null
+          width?: number | null
+        }
+        Relationships: []
       }
       leads: {
         Row: {
@@ -125,6 +158,7 @@ export type Database = {
           height: number | null
           id: string
           image_url: string
+          link_url: string | null
           sort_order: number
           title: string | null
           width: number | null
@@ -134,6 +168,7 @@ export type Database = {
           height?: number | null
           id?: string
           image_url: string
+          link_url?: string | null
           sort_order?: number
           title?: string | null
           width?: number | null
@@ -143,6 +178,7 @@ export type Database = {
           height?: number | null
           id?: string
           image_url?: string
+          link_url?: string | null
           sort_order?: number
           title?: string | null
           width?: number | null
