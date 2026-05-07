@@ -46,41 +46,53 @@ export function SiteCard({
     }
   };
 
+  const imgInner = (
+    <>
+      <img
+        src={imageUrl}
+        alt={title ?? "Sito di riferimento"}
+        width={width ?? undefined}
+        height={height ?? undefined}
+        loading="lazy"
+        className="w-full h-auto block"
+        draggable={false}
+      />
+      {liked && (
+        <div className="absolute top-3 right-3 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 flex items-center gap-1.5 shadow-sm pointer-events-none">
+          <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
+          <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
+        </div>
+      )}
+      {linkUrl && (
+        <div className="absolute top-3 left-3 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 flex items-center gap-1.5 shadow-sm pointer-events-none">
+          <ExternalLink className="size-3.5" />
+          <span className="text-[10px] font-mono uppercase tracking-wider">Visita</span>
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="group block w-full overflow-hidden rounded-xl bg-card border border-border transition-all duration-300 hover:border-foreground/40">
-      <button
-        type="button"
-        onClick={onZoom}
-        className="block w-full relative cursor-zoom-in"
-        aria-label="Ingrandisci immagine"
-      >
-        <img
-          src={imageUrl}
-          alt={title ?? "Sito di riferimento"}
-          width={width ?? undefined}
-          height={height ?? undefined}
-          loading="lazy"
-          className="w-full h-auto block"
-          draggable={false}
-        />
-        {liked && (
-          <div className="absolute top-3 right-3 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 flex items-center gap-1.5 shadow-sm pointer-events-none">
-            <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
-            <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
-          </div>
-        )}
-      </button>
-
-      {linkUrl && (
+      {linkUrl ? (
         <a
           href={linkUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="block px-3 py-2 border-t border-border text-xs font-mono uppercase tracking-wider hover:bg-accent inline-flex items-center gap-1.5"
-          style={{ width: "100%" }}
+          className="block w-full relative"
+          aria-label="Visita il sito"
         >
-          <ExternalLink className="size-3.5" /> Visita il sito
+          {imgInner}
         </a>
+      ) : (
+        <button
+          type="button"
+          onClick={onZoom}
+          className="block w-full relative cursor-zoom-in"
+          aria-label="Ingrandisci immagine"
+        >
+          {imgInner}
+        </button>
       )}
 
       <div className="px-3 py-2.5 flex items-center gap-1">
