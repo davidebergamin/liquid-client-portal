@@ -378,7 +378,6 @@ function SortableSiteCard({
     </div>
   );
 }
-}
 
 function LeadsTab({ onOpen }: { onOpen: (slug: string) => void }) {
   const fetchLeads = useServerFn(listLeads);
