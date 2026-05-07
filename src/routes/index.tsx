@@ -180,8 +180,24 @@ function BoardTab() {
     }
   };
 
+  const linkMut = useMutation({
+    mutationFn: (url: string) => addLink({ data: { url } }),
+    onSuccess: () => {
+      toast.success("Link aggiunto come card");
+      setOrder(null);
+      qc.invalidateQueries({ queryKey: ["admin-sites"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+    };
     const onPaste = (e: ClipboardEvent) => {
+      if (isEditable(e.target)) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       const files: File[] = [];
@@ -191,11 +207,18 @@ function BoardTab() {
           if (f) files.push(f);
         }
       }
-      if (!files.length) return;
-      e.preventDefault();
-      const dt = new DataTransfer();
-      files.forEach((f) => dt.items.add(f));
-      handleFiles(dt.files);
+      if (files.length) {
+        e.preventDefault();
+        const dt = new DataTransfer();
+        files.forEach((f) => dt.items.add(f));
+        handleFiles(dt.files);
+        return;
+      }
+      const text = e.clipboardData?.getData("text")?.trim();
+      if (text && /^(https?:\/\/|www\.)\S+$/i.test(text)) {
+        e.preventDefault();
+        linkMut.mutate(text);
+      }
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
