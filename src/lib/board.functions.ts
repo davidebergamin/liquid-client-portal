@@ -267,8 +267,14 @@ export const deleteSite = createServerFn({ method: "POST" })
 
 // Leads management
 export const createLead = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; name: string }) =>
-    z.object({ password: z.string().min(1).max(200), name: z.string().trim().min(1).max(80) }).parse(d)
+  .inputValidator((d: { password: string; name: string; companyName?: string }) =>
+    z
+      .object({
+        password: z.string().min(1).max(200),
+        name: z.string().trim().min(1).max(80),
+        companyName: z.string().trim().max(120).optional(),
+      })
+      .parse(d)
   )
   .handler(async ({ data }) => {
     checkPassword(data.password);
@@ -280,11 +286,32 @@ export const createLead = createServerFn({ method: "POST" })
     }
     const { data: row, error } = await supabaseAdmin
       .from("leads")
-      .insert({ name: data.name, slug })
+      .insert({ name: data.name, slug, company_name: data.companyName || null })
       .select()
       .single();
     if (error) throw new Error(error.message);
     return { lead: row };
+  });
+
+export const updateLead = createServerFn({ method: "POST" })
+  .inputValidator((d: { password: string; id: string; name?: string; companyName?: string }) =>
+    z
+      .object({
+        password: z.string().min(1).max(200),
+        id: z.string().uuid(),
+        name: z.string().trim().min(1).max(80).optional(),
+        companyName: z.string().trim().max(120).nullable().optional(),
+      })
+      .parse(d)
+  )
+  .handler(async ({ data }) => {
+    checkPassword(data.password);
+    const patch: { name?: string; company_name?: string | null } = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.companyName !== undefined) patch.company_name = data.companyName || null;
+    const { error } = await supabaseAdmin.from("leads").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const listLeads = createServerFn({ method: "POST" })
@@ -293,7 +320,7 @@ export const listLeads = createServerFn({ method: "POST" })
     checkPassword(data.password);
     const { data: leads } = await supabaseAdmin
       .from("leads")
-      .select("id,name,slug,created_at")
+      .select("id,name,slug,company_name,created_at")
       .order("created_at", { ascending: false });
 
     const ids = (leads ?? []).map((l) => l.id);
