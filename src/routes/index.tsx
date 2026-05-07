@@ -41,9 +41,11 @@ import {
   deleteLead,
   deleteSite,
   getLeadDetail,
+  getLeadUploads,
   listLeads,
   reorderSites,
   updateLead,
+  updateSite,
   uploadSite,
 } from "@/lib/board.functions";
 
@@ -89,6 +91,7 @@ type AdminSite = {
   id: string;
   title: string | null;
   image_url: string;
+  link_url: string | null;
   width: number | null;
   height: number | null;
   sort_order: number;
