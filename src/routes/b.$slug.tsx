@@ -70,6 +70,8 @@ function LeadBoardPage() {
   ];
   const zoomedSite = allImages.find((s) => s.id === zoomed) ?? null;
 
+  const [tab, setTab] = useState<"board" | "mine">("board");
+
   return (
     <div className="min-h-screen bg-background">
       <Toaster richColors position="top-center" />
@@ -82,61 +84,78 @@ function LeadBoardPage() {
         )}
       </header>
 
-      <section className="px-6 md:px-10 pb-12 pt-4 md:pt-10 max-w-[1600px] mx-auto">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-          [ 01 ] — Mood board
-        </p>
-        <h1 className="font-display text-5xl md:text-7xl lg:text-[88px] leading-[0.95] mt-3 max-w-5xl">
-          {data?.lead ? `Ciao ${data.lead.name}, scegli il tuo stile.` : "Scegli lo stile del tuo nuovo sito."}
-        </h1>
-        <p className="text-muted-foreground mt-6 max-w-xl text-base md:text-lg leading-relaxed">
-          Naviga la selezione, metti like a quelli che ti rappresentano e lascia un commento
-          su cosa ti colpisce. Userò le tue scelte per disegnare il tuo brand.
-        </p>
-      </section>
+      <nav className="px-6 md:px-10 pb-2 flex items-center gap-2 max-w-[1600px] mx-auto sticky top-0 bg-background/90 backdrop-blur z-30 pt-2">
+        <button
+          onClick={() => setTab("board")}
+          className={`font-mono text-[11px] uppercase tracking-widest px-3 py-2 rounded ${tab === "board" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Mood board
+        </button>
+        <button
+          onClick={() => setTab("mine")}
+          className={`font-mono text-[11px] uppercase tracking-widest px-3 py-2 rounded ${tab === "mine" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          Le tue ispirazioni
+          {uploads?.leadSites?.length ? ` (${uploads.leadSites.length})` : ""}
+        </button>
+      </nav>
 
-      <main className="px-6 md:px-10 pb-12 max-w-[1600px] mx-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : !data?.sites.length ? (
-          <div className="border border-dashed border-border rounded-xl py-24 text-center">
-            <p className="font-display text-3xl">Board vuota</p>
-          </div>
-        ) : (
-          <div className="masonry">
-            {data.sites.map((s) => (
-              <SiteCard
-                key={s.id}
-                title={s.title}
-                imageUrl={s.image_url}
-                width={s.width}
-                height={s.height}
-                liked={s.liked}
-                commentsCount={s.comments}
-                linkUrl={s.link_url}
-                busy={likeMut.isPending && likeMut.variables === s.id}
-                onToggleLike={() => likeMut.mutate(s.id)}
-                onSubmitComment={async (body) => {
-                  await commentFn({ data: { slug, siteId: s.id, body } });
-                  toast.success("Commento aggiunto");
-                  qc.invalidateQueries({ queryKey: ["board", slug] });
-                }}
-                onZoom={() => setZoomed(s.id)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+      {tab === "board" ? (
+        <>
+          <section className="px-6 md:px-10 pb-12 pt-4 md:pt-10 max-w-[1600px] mx-auto">
+            <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+              [ 01 ] — Mood board
+            </p>
+            <h1 className="font-display text-5xl md:text-7xl lg:text-[88px] leading-[0.95] mt-3 max-w-5xl">
+              {data?.lead ? `Ciao ${data.lead.name}, scegli il tuo stile.` : "Scegli lo stile del tuo nuovo sito."}
+            </h1>
+            <p className="text-muted-foreground mt-6 max-w-xl text-base md:text-lg leading-relaxed">
+              Naviga la selezione, metti like a quelli che ti rappresentano e lascia un commento
+              su cosa ti colpisce. Userò le tue scelte per disegnare il tuo brand.
+            </p>
+          </section>
 
-      {/* Lead's own uploads */}
-      <section className="px-6 md:px-10 pb-24 max-w-[1600px] mx-auto">
-        <div className="border-t border-border pt-12">
+          <main className="px-6 md:px-10 pb-24 max-w-[1600px] mx-auto">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="size-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !data?.sites.length ? (
+              <div className="border border-dashed border-border rounded-xl py-24 text-center">
+                <p className="font-display text-3xl">Board vuota</p>
+              </div>
+            ) : (
+              <div className="masonry">
+                {data.sites.map((s) => (
+                  <SiteCard
+                    key={s.id}
+                    title={s.title}
+                    imageUrl={s.image_url}
+                    width={s.width}
+                    height={s.height}
+                    liked={s.liked}
+                    commentsCount={s.comments}
+                    linkUrl={s.link_url}
+                    busy={likeMut.isPending && likeMut.variables === s.id}
+                    onToggleLike={() => likeMut.mutate(s.id)}
+                    onSubmitComment={async (body) => {
+                      await commentFn({ data: { slug, siteId: s.id, body } });
+                      toast.success("Commento aggiunto");
+                      qc.invalidateQueries({ queryKey: ["board", slug] });
+                    }}
+                    onZoom={() => setZoomed(s.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </main>
+        </>
+      ) : (
+        <section className="px-6 md:px-10 pb-24 pt-4 md:pt-10 max-w-[1600px] mx-auto">
           <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
             [ 02 ] — Le tue ispirazioni
           </p>
-          <h2 className="font-display text-4xl md:text-5xl mt-3">
+          <h2 className="font-display text-4xl md:text-6xl mt-3">
             Aggiungi siti o immagini che ti ispirano
           </h2>
           <p className="text-muted-foreground mt-3 max-w-xl">
@@ -157,8 +176,8 @@ function LeadBoardPage() {
             }}
           />
 
-          {uploads?.leadSites && uploads.leadSites.length > 0 && (
-            <div className="masonry mt-8">
+          {uploads?.leadSites && uploads.leadSites.length > 0 ? (
+            <div className="masonry mt-10">
               {uploads.leadSites.map((s) => (
                 <LeadUploadCard
                   key={s.id}
@@ -177,9 +196,11 @@ function LeadBoardPage() {
                 />
               ))}
             </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic mt-10">Nessuna ispirazione ancora.</p>
           )}
-        </div>
-      </section>
+        </section>
+      )}
 
       {zoomedSite && (
         <div
