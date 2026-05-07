@@ -78,6 +78,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Scegli lo stile del tuo nuovo sito da fotografo di matrimonio." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Liquid — Mood Board" },
+      { name: "twitter:description", content: "Scegli lo stile del tuo nuovo sito da fotografo di matrimonio." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8bb76fb2-c2ad-4143-b2f1-891548e94580/id-preview-3cd70dc2--9fbaf9d8-bdb4-4ea4-9aa7-bd52a76ad5f4.lovable.app-1778186091629.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/8bb76fb2-c2ad-4143-b2f1-891548e94580/id-preview-3cd70dc2--9fbaf9d8-bdb4-4ea4-9aa7-bd52a76ad5f4.lovable.app-1778186091629.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
