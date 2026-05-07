@@ -45,66 +45,18 @@ import {
   reorderSites,
   updateLead,
   uploadSite,
-  verifyAdmin,
 } from "@/lib/board.functions";
 
 export const Route = createFileRoute("/")({
-  component: AdminPage,
+  component: AdminApp,
 });
 
-const PW_KEY = "liquid_admin_pw";
-
-function AdminPage() {
-  const [pw, setPw] = useState("");
-  const [authed, setAuthed] = useState(false);
-  const verify = useServerFn(verifyAdmin);
-
-  useEffect(() => {
-    const saved = sessionStorage.getItem(PW_KEY);
-    if (saved) {
-      verify({ data: { password: saved } })
-        .then(() => { setPw(saved); setAuthed(true); })
-        .catch(() => sessionStorage.removeItem(PW_KEY));
-    }
-  }, [verify]);
-
-  const loginMut = useMutation({
-    mutationFn: () => verify({ data: { password: pw } }),
-    onSuccess: () => { sessionStorage.setItem(PW_KEY, pw); setAuthed(true); },
-    onError: (e: Error) => toast.error(e.message),
-  });
-
-  if (!authed) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-6">
-        <Toaster richColors position="top-center" />
-        <div className="w-full max-w-sm">
-          <span className="font-mono text-sm tracking-widest font-medium">LIQUID</span>
-          <h1 className="font-display text-4xl mt-6">Admin</h1>
-          <p className="text-sm text-muted-foreground mt-2">Inserisci la password per gestire la board.</p>
-          <form
-            onSubmit={(e) => { e.preventDefault(); loginMut.mutate(); }}
-            className="mt-6 space-y-3"
-          >
-            <Input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" autoFocus />
-            <Button type="submit" className="w-full" disabled={loginMut.isPending || !pw}>
-              {loginMut.isPending ? "Verifico..." : "Entra"}
-            </Button>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  return <AdminApp password={pw} />;
-}
-
-function AdminApp({ password }: { password: string }) {
+function AdminApp() {
   const [tab, setTab] = useState<"board" | "leads">("board");
   const [activeLeadSlug, setActiveLeadSlug] = useState<string | null>(null);
 
   if (activeLeadSlug) {
-    return <LeadDetail password={password} slug={activeLeadSlug} onBack={() => setActiveLeadSlug(null)} />;
+    return <LeadDetail slug={activeLeadSlug} onBack={() => setActiveLeadSlug(null)} />;
   }
 
   return (
@@ -128,7 +80,7 @@ function AdminApp({ password }: { password: string }) {
         </div>
       </header>
 
-      {tab === "board" ? <BoardTab password={password} /> : <LeadsTab password={password} onOpen={setActiveLeadSlug} />}
+      {tab === "board" ? <BoardTab /> : <LeadsTab onOpen={setActiveLeadSlug} />}
     </div>
   );
 }
@@ -145,7 +97,7 @@ type AdminSite = {
   comments: number;
 };
 
-function BoardTab({ password }: { password: string }) {
+function BoardTab() {
   const fetchSites = useServerFn(adminListSites);
   const upload = useServerFn(uploadSite);
   const del = useServerFn(deleteSite);
@@ -154,7 +106,7 @@ function BoardTab({ password }: { password: string }) {
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-sites"],
-    queryFn: () => fetchSites({ data: { password } }),
+    queryFn: () => fetchSites(),
   });
 
   const [order, setOrder] = useState<string[] | null>(null);
@@ -180,7 +132,7 @@ function BoardTab({ password }: { password: string }) {
   };
 
   const reorderMut = useMutation({
-    mutationFn: () => reorder({ data: { password, ids: order! } }),
+    mutationFn: () => reorder({ data: { ids: order! } }),
     onSuccess: () => {
       toast.success("Ordine salvato");
       setOrder(null);
@@ -202,7 +154,7 @@ function BoardTab({ password }: { password: string }) {
               const dataUrl = reader.result as string;
               const dims = await readImageDimensions(dataUrl);
               const title = file.name.replace(/\.[^/.]+$/, "").slice(0, 120);
-              await upload({ data: { password, title, fileName: file.name, dataUrl, width: dims.width, height: dims.height } });
+              await upload({ data: { title, fileName: file.name, dataUrl, width: dims.width, height: dims.height } });
               resolve();
             } catch (e) { reject(e); }
           };
@@ -242,13 +194,25 @@ function BoardTab({ password }: { password: string }) {
   }, []);
 
   const delMut = useMutation({
-    mutationFn: (id: string) => del({ data: { password, id } }),
+    mutationFn: (id: string) => del({ data: { id } }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["admin-sites"] });
+      const prev = qc.getQueryData<{ sites: AdminSite[] }>(["admin-sites"]);
+      if (prev) {
+        qc.setQueryData(["admin-sites"], { sites: prev.sites.filter((s) => s.id !== id) });
+      }
+      return { prev };
+    },
+    onError: (e: Error, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["admin-sites"], ctx.prev);
+      toast.error(e.message);
+    },
     onSuccess: () => {
-      toast.success("Eliminato");
-      setOrder(null);
+      toast.success("Eliminato", { duration: 1500 });
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["admin-sites"] });
     },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   return (
@@ -301,7 +265,7 @@ function BoardTab({ password }: { password: string }) {
                     key={s.id}
                     site={s}
                     index={i}
-                    onDelete={() => { if (confirm("Eliminare questo sito?")) delMut.mutate(s.id); }}
+                    onDelete={() => delMut.mutate(s.id)}
                   />
                 ))}
               </div>
@@ -372,7 +336,7 @@ function SortableSiteCard({
   );
 }
 
-function LeadsTab({ password, onOpen }: { password: string; onOpen: (slug: string) => void }) {
+function LeadsTab({ onOpen }: { onOpen: (slug: string) => void }) {
   const fetchLeads = useServerFn(listLeads);
   const create = useServerFn(createLead);
   const del = useServerFn(deleteLead);
@@ -381,13 +345,13 @@ function LeadsTab({ password, onOpen }: { password: string; onOpen: (slug: strin
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-leads"],
-    queryFn: () => fetchLeads({ data: { password } }),
+    queryFn: () => fetchLeads(),
   });
 
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const createMut = useMutation({
-    mutationFn: () => create({ data: { password, name: name.trim(), companyName: companyName.trim() || undefined } }),
+    mutationFn: () => create({ data: { name: name.trim(), companyName: companyName.trim() || undefined } }),
     onSuccess: () => {
       toast.success("Lead creato");
       setName("");
@@ -398,7 +362,7 @@ function LeadsTab({ password, onOpen }: { password: string; onOpen: (slug: strin
   });
 
   const delMut = useMutation({
-    mutationFn: (id: string) => del({ data: { password, id } }),
+    mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
       toast.success("Lead eliminato");
       qc.invalidateQueries({ queryKey: ["admin-leads"] });
@@ -407,7 +371,7 @@ function LeadsTab({ password, onOpen }: { password: string; onOpen: (slug: strin
 
   const updateMut = useMutation({
     mutationFn: (vars: { id: string; companyName: string }) =>
-      update({ data: { password, id: vars.id, companyName: vars.companyName } }),
+      update({ data: { id: vars.id, companyName: vars.companyName } }),
     onSuccess: () => {
       toast.success("Aggiornato");
       qc.invalidateQueries({ queryKey: ["admin-leads"] });
@@ -526,11 +490,11 @@ function LeadsTab({ password, onOpen }: { password: string; onOpen: (slug: strin
   );
 }
 
-function LeadDetail({ password, slug, onBack }: { password: string; slug: string; onBack: () => void }) {
+function LeadDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
   const fetchDetail = useServerFn(getLeadDetail);
   const { data, isLoading } = useQuery({
     queryKey: ["lead-detail", slug],
-    queryFn: () => fetchDetail({ data: { password, slug } }),
+    queryFn: () => fetchDetail({ data: { slug } }),
   });
 
   return (
