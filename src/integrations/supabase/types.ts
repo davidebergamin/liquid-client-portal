@@ -64,8 +64,9 @@ export type Database = {
           created_at: string
           height: number | null
           id: string
-          image_url: string
+          image_url: string | null
           lead_id: string
+          link_url: string | null
           title: string | null
           width: number | null
         }
@@ -73,8 +74,9 @@ export type Database = {
           created_at?: string
           height?: number | null
           id?: string
-          image_url: string
+          image_url?: string | null
           lead_id: string
+          link_url?: string | null
           title?: string | null
           width?: number | null
         }
@@ -82,8 +84,9 @@ export type Database = {
           created_at?: string
           height?: number | null
           id?: string
-          image_url?: string
+          image_url?: string | null
           lead_id?: string
+          link_url?: string | null
           title?: string | null
           width?: number | null
         }
