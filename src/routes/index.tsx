@@ -270,6 +270,11 @@ function BoardTab() {
                     site={s}
                     index={i}
                     onDelete={() => delMut.mutate(s.id)}
+                    onSetLink={async (url) => {
+                      await updateSiteFn({ data: { id: s.id, linkUrl: url } });
+                      qc.invalidateQueries({ queryKey: ["admin-sites"] });
+                      toast.success(url ? "Link aggiornato" : "Link rimosso");
+                    }}
                   />
                 ))}
               </div>
