@@ -537,9 +537,14 @@ function LeadsTab({ onOpen }: { onOpen: (slug: string) => void }) {
 
 function LeadDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
   const fetchDetail = useServerFn(getLeadDetail);
+  const fetchUploads = useServerFn(getLeadUploads);
   const { data, isLoading } = useQuery({
     queryKey: ["lead-detail", slug],
     queryFn: () => fetchDetail({ data: { slug } }),
+  });
+  const { data: uploads } = useQuery({
+    queryKey: ["lead-uploads-admin", slug],
+    queryFn: () => fetchUploads({ data: { slug } }),
   });
 
   return (
