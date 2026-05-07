@@ -306,7 +306,7 @@ export const updateLead = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     checkPassword(data.password);
-    const patch: Record<string, unknown> = {};
+    const patch: { name?: string; company_name?: string | null } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.companyName !== undefined) patch.company_name = data.companyName || null;
     const { error } = await supabaseAdmin.from("leads").update(patch).eq("id", data.id);
