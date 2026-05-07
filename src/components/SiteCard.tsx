@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, X } from "lucide-react";
+import { Heart, MessageCircle, Send, X, ExternalLink } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +11,7 @@ type Props = {
   liked: boolean;
   commentsCount: number;
   busy?: boolean;
+  linkUrl?: string | null;
   onToggleLike: () => void;
   onSubmitComment: (body: string) => Promise<void> | void;
   onZoom: () => void;
@@ -24,6 +25,7 @@ export function SiteCard({
   liked,
   commentsCount,
   busy,
+  linkUrl,
   onToggleLike,
   onSubmitComment,
   onZoom,
@@ -68,6 +70,18 @@ export function SiteCard({
           </div>
         )}
       </button>
+
+      {linkUrl && (
+        <a
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block px-3 py-2 border-t border-border text-xs font-mono uppercase tracking-wider hover:bg-accent inline-flex items-center gap-1.5"
+          style={{ width: "100%" }}
+        >
+          <ExternalLink className="size-3.5" /> Visita il sito
+        </a>
+      )}
 
       <div className="px-3 py-2.5 flex items-center gap-1">
         <button

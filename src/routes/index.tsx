@@ -31,6 +31,8 @@ import {
   Check,
   Pencil,
   X,
+  Link as LinkIcon,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,9 +43,11 @@ import {
   deleteLead,
   deleteSite,
   getLeadDetail,
+  getLeadUploads,
   listLeads,
   reorderSites,
   updateLead,
+  updateSite,
   uploadSite,
 } from "@/lib/board.functions";
 
@@ -89,6 +93,7 @@ type AdminSite = {
   id: string;
   title: string | null;
   image_url: string;
+  link_url: string | null;
   width: number | null;
   height: number | null;
   sort_order: number;
@@ -100,6 +105,7 @@ type AdminSite = {
 function BoardTab() {
   const fetchSites = useServerFn(adminListSites);
   const upload = useServerFn(uploadSite);
+  const updateSiteFn = useServerFn(updateSite);
   const del = useServerFn(deleteSite);
   const reorder = useServerFn(reorderSites);
   const qc = useQueryClient();
@@ -266,6 +272,11 @@ function BoardTab() {
                     site={s}
                     index={i}
                     onDelete={() => delMut.mutate(s.id)}
+                    onSetLink={async (url) => {
+                      await updateSiteFn({ data: { id: s.id, linkUrl: url } });
+                      qc.invalidateQueries({ queryKey: ["admin-sites"] });
+                      toast.success(url ? "Link aggiornato" : "Link rimosso");
+                    }}
                   />
                 ))}
               </div>
@@ -281,10 +292,12 @@ function SortableSiteCard({
   site,
   index,
   onDelete,
+  onSetLink,
 }: {
   site: AdminSite;
   index: number;
   onDelete: () => void;
+  onSetLink: (url: string | null) => Promise<void> | void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: site.id });
   const style = {
@@ -293,6 +306,8 @@ function SortableSiteCard({
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.6 : 1,
   };
+  const [editingLink, setEditingLink] = useState(false);
+  const [linkValue, setLinkValue] = useState(site.link_url ?? "");
 
   return (
     <div
@@ -324,6 +339,14 @@ function SortableSiteCard({
           <span className="inline-flex items-center gap-1"><Heart className="size-3.5" /> {site.likes}</span>
           <span className="inline-flex items-center gap-1"><MessageCircle className="size-3.5" /> {site.comments}</span>
           <button
+            onClick={() => setEditingLink((v) => !v)}
+            className={`hover:text-foreground transition ${site.link_url ? "text-foreground" : ""}`}
+            aria-label="Imposta link"
+            title={site.link_url || "Aggiungi link"}
+          >
+            <LinkIcon className="size-3.5" />
+          </button>
+          <button
             onClick={onDelete}
             className="text-destructive hover:text-destructive/80 transition"
             aria-label="Elimina"
@@ -332,6 +355,28 @@ function SortableSiteCard({
           </button>
         </div>
       </div>
+      {editingLink && (
+        <div className="px-4 pb-3 flex gap-2">
+          <Input
+            value={linkValue}
+            onChange={(e) => setLinkValue(e.target.value)}
+            placeholder="https://example.com"
+            className="h-8 text-xs"
+          />
+          <Button
+            size="sm"
+            onClick={async () => {
+              let url = linkValue.trim();
+              if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+              await onSetLink(url || null);
+              setLinkValue(url);
+              setEditingLink(false);
+            }}
+          >
+            Salva
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
@@ -492,9 +537,14 @@ function LeadsTab({ onOpen }: { onOpen: (slug: string) => void }) {
 
 function LeadDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
   const fetchDetail = useServerFn(getLeadDetail);
+  const fetchUploads = useServerFn(getLeadUploads);
   const { data, isLoading } = useQuery({
     queryKey: ["lead-detail", slug],
     queryFn: () => fetchDetail({ data: { slug } }),
+  });
+  const { data: uploads } = useQuery({
+    queryKey: ["lead-uploads-admin", slug],
+    queryFn: () => fetchUploads({ data: { slug } }),
   });
 
   return (
@@ -556,6 +606,47 @@ function LeadDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
               ))}
             </div>
           </div>
+          {uploads?.leadSites && uploads.leadSites.length > 0 && (
+            <div className="mt-16 space-y-4">
+              <h2 className="font-display text-3xl">Aggiunte dal lead ({uploads.leadSites.length})</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {uploads.leadSites.map((s) => (
+                  <div key={s.id} className="rounded-xl overflow-hidden border border-border bg-card">
+                    {s.image_url ? (
+                      <img src={s.image_url} alt={s.title ?? ""} className="w-full h-auto block" loading="lazy" />
+                    ) : (
+                      <a
+                        href={s.link_url ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block aspect-[16/10] bg-accent flex items-center justify-center p-6 text-center hover:bg-accent/70"
+                      >
+                        <div>
+                          <ExternalLink className="size-6 mx-auto mb-2 text-muted-foreground" />
+                          <p className="font-display text-xl break-all">{s.title || s.link_url}</p>
+                        </div>
+                      </a>
+                    )}
+                    <div className="p-4 space-y-2">
+                      {s.title && <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground truncate">{s.title}</p>}
+                      {s.link_url && (
+                        <a href={s.link_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary inline-flex items-center gap-1 break-all hover:underline">
+                          <ExternalLink className="size-3" /> {s.link_url}
+                        </a>
+                      )}
+                      {s.comments.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-border">
+                          {s.comments.map((c) => (
+                            <p key={c.id} className="text-sm border-l-2 border-border pl-3">{c.body}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
       )}
     </div>

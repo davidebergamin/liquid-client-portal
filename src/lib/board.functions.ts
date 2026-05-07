@@ -31,21 +31,29 @@ export const getBoard = createServerFn({ method: "GET" })
 
     const { data: sites, error } = await supabaseAdmin
       .from("sites")
-      .select("id,title,image_url,width,height,sort_order,created_at")
+      .select("id,title,image_url,link_url,width,height,sort_order,created_at")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
 
     const ids = (sites ?? []).map((s) => s.id);
-    if (ids.length === 0) return { lead, sites: [] };
 
-    const [{ data: likes }, { data: comments }] = await Promise.all([
-      supabaseAdmin.from("likes").select("site_id").eq("lead_id", lead.id).in("site_id", ids),
-      supabaseAdmin.from("comments").select("site_id").eq("lead_id", lead.id).in("site_id", ids),
+    const [likesRes, commentsRes, leadSitesRes] = await Promise.all([
+      ids.length
+        ? supabaseAdmin.from("likes").select("site_id").eq("lead_id", lead.id).in("site_id", ids)
+        : Promise.resolve({ data: [] as { site_id: string | null }[] }),
+      ids.length
+        ? supabaseAdmin.from("comments").select("site_id").eq("lead_id", lead.id).in("site_id", ids)
+        : Promise.resolve({ data: [] as { site_id: string | null }[] }),
+      supabaseAdmin
+        .from("lead_sites")
+        .select("id,title,image_url,link_url,width,height,created_at")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false }),
     ]);
 
-    const likedSet = new Set((likes ?? []).map((l) => l.site_id));
+    const likedSet = new Set((likesRes.data ?? []).map((l) => l.site_id));
     const commentCounts = new Map<string, number>();
-    (comments ?? []).forEach((c) => commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1));
+    (commentsRes.data ?? []).forEach((c) => { if (c.site_id) commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1); });
 
     return {
       lead,
@@ -55,6 +63,7 @@ export const getBoard = createServerFn({ method: "GET" })
         likes: likedSet.has(s.id) ? 1 : 0,
         comments: commentCounts.get(s.id) ?? 0,
       })),
+      leadSites: leadSitesRes.data ?? [],
     };
   });
 
@@ -139,7 +148,7 @@ export const deleteOwnComment = createServerFn({ method: "POST" })
 export const adminListSites = createServerFn({ method: "GET" }).handler(async () => {
   const { data: sites } = await supabaseAdmin
     .from("sites")
-    .select("id,title,image_url,width,height,sort_order,created_at")
+    .select("id,title,image_url,link_url,width,height,sort_order,created_at")
     .order("sort_order", { ascending: true });
 
   const ids = (sites ?? []).map((s) => s.id);
@@ -152,7 +161,7 @@ export const adminListSites = createServerFn({ method: "GET" }).handler(async ()
   const likeCounts = new Map<string, number>();
   (likes ?? []).forEach((l) => likeCounts.set(l.site_id, (likeCounts.get(l.site_id) ?? 0) + 1));
   const commentCounts = new Map<string, number>();
-  (comments ?? []).forEach((c) => commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1));
+  (comments ?? []).forEach((c) => { if (c.site_id) commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1); });
 
   return {
     sites: (sites ?? []).map((s) => ({
@@ -165,24 +174,27 @@ export const adminListSites = createServerFn({ method: "GET" }).handler(async ()
 
 export const uploadSite = createServerFn({ method: "POST" })
   .inputValidator(
-    (d: { title?: string; fileName: string; dataUrl: string; width?: number; height?: number }) =>
+    (d: { title?: string; fileName?: string; dataUrl?: string; width?: number; height?: number; linkUrl?: string }) =>
       z
         .object({
           title: z.string().trim().max(120).optional(),
-          fileName: z.string().min(1).max(200),
-          dataUrl: z.string().min(20).max(20_000_000),
+          fileName: z.string().min(1).max(200).optional(),
+          dataUrl: z.string().min(20).max(20_000_000).optional(),
           width: z.number().int().positive().optional(),
           height: z.number().int().positive().optional(),
+          linkUrl: z.string().url().max(500).optional(),
         })
         .parse(d)
   )
   .handler(async ({ data }) => {
+    if (!data.dataUrl) throw new Error("Immagine richiesta");
     const match = data.dataUrl.match(/^data:(.+);base64,(.+)$/);
     if (!match) throw new Error("Formato immagine non valido");
     const contentType = match[1];
     const buffer = Buffer.from(match[2], "base64");
 
-    const ext = (data.fileName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const fileName = data.fileName || "image.jpg";
+    const ext = (fileName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
     const path = `${crypto.randomUUID()}.${ext || "jpg"}`;
 
     const { error: upErr } = await supabaseAdmin.storage
@@ -205,6 +217,7 @@ export const uploadSite = createServerFn({ method: "POST" })
       .insert({
         title: data.title || null,
         image_url: pub.publicUrl,
+        link_url: data.linkUrl || null,
         width: data.width ?? null,
         height: data.height ?? null,
         sort_order: nextOrder,
@@ -213,6 +226,23 @@ export const uploadSite = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return { site: row };
+  });
+
+export const updateSite = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string; title?: string | null; linkUrl?: string | null }) =>
+    z.object({
+      id: z.string().uuid(),
+      title: z.string().trim().max(120).nullable().optional(),
+      linkUrl: z.string().trim().max(500).nullable().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const patch: { title?: string | null; link_url?: string | null } = {};
+    if (data.title !== undefined) patch.title = data.title || null;
+    if (data.linkUrl !== undefined) patch.link_url = data.linkUrl || null;
+    const { error } = await supabaseAdmin.from("sites").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const reorderSites = createServerFn({ method: "POST" })
@@ -351,6 +381,7 @@ export const getLeadDetail = createServerFn({ method: "GET" })
     const likedSet = new Set((likes ?? []).map((l) => l.site_id));
     const cMap = new Map<string, { id: string; body: string; created_at: string }[]>();
     (comments ?? []).forEach((c) => {
+      if (!c.site_id) return;
       const list = cMap.get(c.site_id) ?? [];
       list.push({ id: c.id, body: c.body, created_at: c.created_at });
       cMap.set(c.site_id, list);
@@ -363,5 +394,134 @@ export const getLeadDetail = createServerFn({ method: "GET" })
         liked: likedSet.has(s.id),
         comments: cMap.get(s.id) ?? [],
       })),
+    };
+  });
+
+// ---------- LEAD UPLOADS (lead-submitted images/links) ----------
+
+export const addLeadSite = createServerFn({ method: "POST" })
+  .inputValidator((d: {
+    slug: string;
+    title?: string;
+    fileName?: string;
+    dataUrl?: string;
+    width?: number;
+    height?: number;
+    linkUrl?: string;
+  }) =>
+    z.object({
+      slug: z.string().min(1).max(80),
+      title: z.string().trim().max(120).optional(),
+      fileName: z.string().min(1).max(200).optional(),
+      dataUrl: z.string().min(20).max(20_000_000).optional(),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+      linkUrl: z.string().url().max(500).optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    let imageUrl: string | null = null;
+    let width = data.width ?? null;
+    let height = data.height ?? null;
+
+    if (data.dataUrl) {
+      const match = data.dataUrl.match(/^data:(.+);base64,(.+)$/);
+      if (!match) throw new Error("Formato immagine non valido");
+      const contentType = match[1];
+      const buffer = Buffer.from(match[2], "base64");
+      const fileName = data.fileName || "image.jpg";
+      const ext = (fileName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `lead-${lead.id}/${crypto.randomUUID()}.${ext || "jpg"}`;
+      const { error: upErr } = await supabaseAdmin.storage
+        .from(BUCKET).upload(path, buffer, { contentType, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
+      imageUrl = pub.publicUrl;
+    }
+
+    if (!imageUrl && !data.linkUrl) throw new Error("Carica un'immagine o inserisci un link");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("lead_sites")
+      .insert({
+        lead_id: lead.id,
+        title: data.title || null,
+        image_url: imageUrl,
+        link_url: data.linkUrl || null,
+        width,
+        height,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { leadSite: row };
+  });
+
+export const deleteLeadSite = createServerFn({ method: "POST" })
+  .inputValidator((d: { slug: string; id: string }) =>
+    z.object({ slug: z.string().min(1).max(80), id: z.string().uuid() }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    const { data: row } = await supabaseAdmin
+      .from("lead_sites").select("image_url").eq("id", data.id).eq("lead_id", lead.id).maybeSingle();
+    if (row?.image_url) {
+      const path = row.image_url.split(`/${BUCKET}/`)[1];
+      if (path) await supabaseAdmin.storage.from(BUCKET).remove([path]);
+    }
+    await supabaseAdmin.from("lead_sites").delete().eq("id", data.id).eq("lead_id", lead.id);
+    return { ok: true };
+  });
+
+export const addLeadSiteComment = createServerFn({ method: "POST" })
+  .inputValidator((d: { slug: string; leadSiteId: string; body: string }) =>
+    z.object({
+      slug: z.string().min(1).max(80),
+      leadSiteId: z.string().uuid(),
+      body: z.string().trim().min(1).max(500),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    const { data: row, error } = await supabaseAdmin
+      .from("comments")
+      .insert({ lead_site_id: data.leadSiteId, lead_id: lead.id, author_name: lead.name, body: data.body })
+      .select().single();
+    if (error) throw new Error(error.message);
+    return { comment: row };
+  });
+
+// Extended lead detail with their uploaded sites + comments
+export const getLeadUploads = createServerFn({ method: "GET" })
+  .inputValidator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(80) }).parse(d))
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    const { data: leadSites } = await supabaseAdmin
+      .from("lead_sites")
+      .select("id,title,image_url,link_url,created_at")
+      .eq("lead_id", lead.id)
+      .order("created_at", { ascending: false });
+
+    const ids = (leadSites ?? []).map((s) => s.id);
+    const { data: comments } = ids.length
+      ? await supabaseAdmin
+          .from("comments")
+          .select("id,lead_site_id,body,created_at")
+          .eq("lead_id", lead.id)
+          .in("lead_site_id", ids)
+          .order("created_at", { ascending: false })
+      : { data: [] as { id: string; lead_site_id: string | null; body: string; created_at: string }[] };
+
+    const cMap = new Map<string, { id: string; body: string; created_at: string }[]>();
+    (comments ?? []).forEach((c) => {
+      if (!c.lead_site_id) return;
+      const list = cMap.get(c.lead_site_id) ?? [];
+      list.push({ id: c.id, body: c.body, created_at: c.created_at });
+      cMap.set(c.lead_site_id, list);
+    });
+
+    return {
+      leadSites: (leadSites ?? []).map((s) => ({ ...s, comments: cMap.get(s.id) ?? [] })),
     };
   });
