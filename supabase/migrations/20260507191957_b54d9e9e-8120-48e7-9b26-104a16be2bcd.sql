@@ -1,0 +1,1 @@
+ALTER TABLE public.likes ALTER COLUMN visitor_id DROP NOT NULL;
