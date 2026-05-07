@@ -106,7 +106,7 @@ function BoardTab() {
   const fetchSites = useServerFn(adminListSites);
   const upload = useServerFn(uploadSite);
   const addLink = useServerFn(addSiteLink);
-  const updateSiteFn = useServerFn(updateSite);
+  // updateSite reserved for future inline edits
   const del = useServerFn(deleteSite);
   const reorder = useServerFn(reorderSites);
   const qc = useQueryClient();
