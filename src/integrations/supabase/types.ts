@@ -83,21 +83,21 @@ export type Database = {
           id: string
           lead_id: string | null
           site_id: string
-          visitor_id: string
+          visitor_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           lead_id?: string | null
           site_id: string
-          visitor_id: string
+          visitor_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           lead_id?: string | null
           site_id?: string
-          visitor_id?: string
+          visitor_id?: string | null
         }
         Relationships: [
           {
