@@ -36,16 +36,24 @@ export const getBoard = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
 
     const ids = (sites ?? []).map((s) => s.id);
-    if (ids.length === 0) return { lead, sites: [] };
 
-    const [{ data: likes }, { data: comments }] = await Promise.all([
-      supabaseAdmin.from("likes").select("site_id").eq("lead_id", lead.id).in("site_id", ids),
-      supabaseAdmin.from("comments").select("site_id").eq("lead_id", lead.id).in("site_id", ids),
+    const [likesRes, commentsRes, leadSitesRes] = await Promise.all([
+      ids.length
+        ? supabaseAdmin.from("likes").select("site_id").eq("lead_id", lead.id).in("site_id", ids)
+        : Promise.resolve({ data: [] as { site_id: string | null }[] }),
+      ids.length
+        ? supabaseAdmin.from("comments").select("site_id").eq("lead_id", lead.id).in("site_id", ids)
+        : Promise.resolve({ data: [] as { site_id: string | null }[] }),
+      supabaseAdmin
+        .from("lead_sites")
+        .select("id,title,image_url,link_url,width,height,created_at")
+        .eq("lead_id", lead.id)
+        .order("created_at", { ascending: false }),
     ]);
 
-    const likedSet = new Set((likes ?? []).map((l) => l.site_id));
+    const likedSet = new Set((likesRes.data ?? []).map((l) => l.site_id));
     const commentCounts = new Map<string, number>();
-    (comments ?? []).forEach((c) => { if (c.site_id) commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1); });
+    (commentsRes.data ?? []).forEach((c) => { if (c.site_id) commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1); });
 
     return {
       lead,
@@ -55,6 +63,7 @@ export const getBoard = createServerFn({ method: "GET" })
         likes: likedSet.has(s.id) ? 1 : 0,
         comments: commentCounts.get(s.id) ?? 0,
       })),
+      leadSites: leadSitesRes.data ?? [],
     };
   });
 
