@@ -31,7 +31,6 @@ import {
   Check,
   Pencil,
   X,
-  Link as LinkIcon,
   ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,7 @@ import { Input } from "@/components/ui/input";
 import { Toaster, toast } from "sonner";
 import {
   adminListSites,
+  addSiteLink,
   createLead,
   deleteLead,
   deleteSite,
@@ -47,7 +47,6 @@ import {
   listLeads,
   reorderSites,
   updateLead,
-  updateSite,
   uploadSite,
 } from "@/lib/board.functions";
 
@@ -105,7 +104,8 @@ type AdminSite = {
 function BoardTab() {
   const fetchSites = useServerFn(adminListSites);
   const upload = useServerFn(uploadSite);
-  const updateSiteFn = useServerFn(updateSite);
+  const addLink = useServerFn(addSiteLink);
+  // updateSite reserved for future inline edits
   const del = useServerFn(deleteSite);
   const reorder = useServerFn(reorderSites);
   const qc = useQueryClient();
@@ -178,8 +178,24 @@ function BoardTab() {
     }
   };
 
+  const linkMut = useMutation({
+    mutationFn: (url: string) => addLink({ data: { url } }),
+    onSuccess: () => {
+      toast.success("Link aggiunto come card");
+      setOrder(null);
+      qc.invalidateQueries({ queryKey: ["admin-sites"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   useEffect(() => {
+    const isEditable = (el: EventTarget | null) => {
+      if (!(el instanceof HTMLElement)) return false;
+      const tag = el.tagName;
+      return tag === "INPUT" || tag === "TEXTAREA" || el.isContentEditable;
+    };
     const onPaste = (e: ClipboardEvent) => {
+      if (isEditable(e.target)) return;
       const items = e.clipboardData?.items;
       if (!items) return;
       const files: File[] = [];
@@ -189,11 +205,18 @@ function BoardTab() {
           if (f) files.push(f);
         }
       }
-      if (!files.length) return;
-      e.preventDefault();
-      const dt = new DataTransfer();
-      files.forEach((f) => dt.items.add(f));
-      handleFiles(dt.files);
+      if (files.length) {
+        e.preventDefault();
+        const dt = new DataTransfer();
+        files.forEach((f) => dt.items.add(f));
+        handleFiles(dt.files);
+        return;
+      }
+      const text = e.clipboardData?.getData("text")?.trim();
+      if (text && /^(https?:\/\/|www\.)\S+$/i.test(text)) {
+        e.preventDefault();
+        linkMut.mutate(text);
+      }
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
@@ -240,8 +263,8 @@ function BoardTab() {
           ) : (
             <div className="flex flex-col items-center gap-2">
               <Upload className="size-6 text-muted-foreground" />
-              <p className="font-display text-2xl">Trascina, incolla o seleziona immagini</p>
-              <p className="text-xs text-muted-foreground">⌘+V per incollare. Caricamento multiplo supportato.</p>
+              <p className="font-display text-2xl">Trascina, incolla immagini o link</p>
+              <p className="text-xs text-muted-foreground">⌘+V per incollare immagini o un URL. Caricamento multiplo supportato.</p>
             </div>
           )}
         </label>
@@ -272,11 +295,6 @@ function BoardTab() {
                     site={s}
                     index={i}
                     onDelete={() => delMut.mutate(s.id)}
-                    onSetLink={async (url) => {
-                      await updateSiteFn({ data: { id: s.id, linkUrl: url } });
-                      qc.invalidateQueries({ queryKey: ["admin-sites"] });
-                      toast.success(url ? "Link aggiornato" : "Link rimosso");
-                    }}
                   />
                 ))}
               </div>
@@ -292,12 +310,10 @@ function SortableSiteCard({
   site,
   index,
   onDelete,
-  onSetLink,
 }: {
   site: AdminSite;
   index: number;
   onDelete: () => void;
-  onSetLink: (url: string | null) => Promise<void> | void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: site.id });
   const style = {
@@ -306,8 +322,16 @@ function SortableSiteCard({
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.6 : 1,
   };
-  const [editingLink, setEditingLink] = useState(false);
-  const [linkValue, setLinkValue] = useState(site.link_url ?? "");
+
+  const imgEl = (
+    <img
+      src={site.image_url}
+      alt={site.title ?? ""}
+      className="w-full h-auto block pointer-events-none select-none"
+      loading="lazy"
+      draggable={false}
+    />
+  );
 
   return (
     <div
@@ -324,13 +348,22 @@ function SortableSiteCard({
       >
         <GripVertical className="size-3.5" />
       </button>
-      <img
-        src={site.image_url}
-        alt={site.title ?? ""}
-        className="w-full h-auto block pointer-events-none select-none"
-        loading="lazy"
-        draggable={false}
-      />
+      {site.link_url ? (
+        <a
+          href={site.link_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block relative"
+          title={site.link_url}
+        >
+          {imgEl}
+          <span className="absolute top-2 right-2 z-10 rounded-md bg-background/90 backdrop-blur px-2 py-1 shadow text-[10px] font-mono uppercase tracking-wider inline-flex items-center gap-1">
+            <ExternalLink className="size-3" /> Link
+          </span>
+        </a>
+      ) : (
+        imgEl
+      )}
       <div className="flex items-center justify-between gap-3 px-4 py-3">
         <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground truncate">
           #{index + 1} · {site.title || "Sito"}
@@ -338,14 +371,6 @@ function SortableSiteCard({
         <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
           <span className="inline-flex items-center gap-1"><Heart className="size-3.5" /> {site.likes}</span>
           <span className="inline-flex items-center gap-1"><MessageCircle className="size-3.5" /> {site.comments}</span>
-          <button
-            onClick={() => setEditingLink((v) => !v)}
-            className={`hover:text-foreground transition ${site.link_url ? "text-foreground" : ""}`}
-            aria-label="Imposta link"
-            title={site.link_url || "Aggiungi link"}
-          >
-            <LinkIcon className="size-3.5" />
-          </button>
           <button
             onClick={onDelete}
             className="text-destructive hover:text-destructive/80 transition"
@@ -355,28 +380,6 @@ function SortableSiteCard({
           </button>
         </div>
       </div>
-      {editingLink && (
-        <div className="px-4 pb-3 flex gap-2">
-          <Input
-            value={linkValue}
-            onChange={(e) => setLinkValue(e.target.value)}
-            placeholder="https://example.com"
-            className="h-8 text-xs"
-          />
-          <Button
-            size="sm"
-            onClick={async () => {
-              let url = linkValue.trim();
-              if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
-              await onSetLink(url || null);
-              setLinkValue(url);
-              setEditingLink(false);
-            }}
-          >
-            Salva
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

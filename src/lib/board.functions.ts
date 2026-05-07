@@ -228,6 +228,68 @@ export const uploadSite = createServerFn({ method: "POST" })
     return { site: row };
   });
 
+async function fetchSitePreview(url: string): Promise<{ title: string | null; image: string | null }> {
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; LiquidBot/1.0)" },
+      redirect: "follow",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return { title: null, image: null };
+    const html = (await res.text()).slice(0, 300_000);
+    const meta = (prop: string) => {
+      const re = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']+)["']`, "i");
+      const m = html.match(re) || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']${prop}["']`, "i"));
+      return m?.[1] ?? null;
+    };
+    let image = meta("og:image") || meta("twitter:image") || meta("og:image:url");
+    const title = meta("og:title") || meta("twitter:title") || (html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? null);
+    if (image && image.startsWith("//")) image = "https:" + image;
+    if (image && image.startsWith("/")) {
+      const u = new URL(url);
+      image = `${u.origin}${image}`;
+    }
+    return { title: title?.trim().slice(0, 120) || null, image: image || null };
+  } catch {
+    return { title: null, image: null };
+  }
+}
+
+export const addSiteLink = createServerFn({ method: "POST" })
+  .inputValidator((d: { url: string }) =>
+    z.object({ url: z.string().trim().min(1).max(500) }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    let url = data.url.trim();
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+    try { new URL(url); } catch { throw new Error("URL non valido"); }
+
+    const preview = await fetchSitePreview(url);
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    const fallback = `https://www.google.com/s2/favicons?domain=${host}&sz=256`;
+
+    const { data: minRow } = await supabaseAdmin
+      .from("sites")
+      .select("sort_order")
+      .order("sort_order", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    const nextOrder = (minRow?.sort_order ?? 1) - 1;
+
+    const { data: row, error } = await supabaseAdmin
+      .from("sites")
+      .insert({
+        title: preview.title || host,
+        image_url: preview.image || fallback,
+        link_url: url,
+        sort_order: nextOrder,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { site: row };
+  });
+
 export const updateSite = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string; title?: string | null; linkUrl?: string | null }) =>
     z.object({
