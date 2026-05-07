@@ -396,3 +396,132 @@ export const getLeadDetail = createServerFn({ method: "GET" })
       })),
     };
   });
+
+// ---------- LEAD UPLOADS (lead-submitted images/links) ----------
+
+export const addLeadSite = createServerFn({ method: "POST" })
+  .inputValidator((d: {
+    slug: string;
+    title?: string;
+    fileName?: string;
+    dataUrl?: string;
+    width?: number;
+    height?: number;
+    linkUrl?: string;
+  }) =>
+    z.object({
+      slug: z.string().min(1).max(80),
+      title: z.string().trim().max(120).optional(),
+      fileName: z.string().min(1).max(200).optional(),
+      dataUrl: z.string().min(20).max(20_000_000).optional(),
+      width: z.number().int().positive().optional(),
+      height: z.number().int().positive().optional(),
+      linkUrl: z.string().url().max(500).optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    let imageUrl: string | null = null;
+    let width = data.width ?? null;
+    let height = data.height ?? null;
+
+    if (data.dataUrl) {
+      const match = data.dataUrl.match(/^data:(.+);base64,(.+)$/);
+      if (!match) throw new Error("Formato immagine non valido");
+      const contentType = match[1];
+      const buffer = Buffer.from(match[2], "base64");
+      const fileName = data.fileName || "image.jpg";
+      const ext = (fileName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const path = `lead-${lead.id}/${crypto.randomUUID()}.${ext || "jpg"}`;
+      const { error: upErr } = await supabaseAdmin.storage
+        .from(BUCKET).upload(path, buffer, { contentType, upsert: false });
+      if (upErr) throw new Error(upErr.message);
+      const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
+      imageUrl = pub.publicUrl;
+    }
+
+    if (!imageUrl && !data.linkUrl) throw new Error("Carica un'immagine o inserisci un link");
+
+    const { data: row, error } = await supabaseAdmin
+      .from("lead_sites")
+      .insert({
+        lead_id: lead.id,
+        title: data.title || null,
+        image_url: imageUrl,
+        link_url: data.linkUrl || null,
+        width,
+        height,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { leadSite: row };
+  });
+
+export const deleteLeadSite = createServerFn({ method: "POST" })
+  .inputValidator((d: { slug: string; id: string }) =>
+    z.object({ slug: z.string().min(1).max(80), id: z.string().uuid() }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    const { data: row } = await supabaseAdmin
+      .from("lead_sites").select("image_url").eq("id", data.id).eq("lead_id", lead.id).maybeSingle();
+    if (row?.image_url) {
+      const path = row.image_url.split(`/${BUCKET}/`)[1];
+      if (path) await supabaseAdmin.storage.from(BUCKET).remove([path]);
+    }
+    await supabaseAdmin.from("lead_sites").delete().eq("id", data.id).eq("lead_id", lead.id);
+    return { ok: true };
+  });
+
+export const addLeadSiteComment = createServerFn({ method: "POST" })
+  .inputValidator((d: { slug: string; leadSiteId: string; body: string }) =>
+    z.object({
+      slug: z.string().min(1).max(80),
+      leadSiteId: z.string().uuid(),
+      body: z.string().trim().min(1).max(500),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    const { data: row, error } = await supabaseAdmin
+      .from("comments")
+      .insert({ lead_site_id: data.leadSiteId, lead_id: lead.id, author_name: lead.name, body: data.body })
+      .select().single();
+    if (error) throw new Error(error.message);
+    return { comment: row };
+  });
+
+// Extended lead detail with their uploaded sites + comments
+export const getLeadUploads = createServerFn({ method: "GET" })
+  .inputValidator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(80) }).parse(d))
+  .handler(async ({ data }) => {
+    const lead = await getLeadBySlug(data.slug);
+    const { data: leadSites } = await supabaseAdmin
+      .from("lead_sites")
+      .select("id,title,image_url,link_url,created_at")
+      .eq("lead_id", lead.id)
+      .order("created_at", { ascending: false });
+
+    const ids = (leadSites ?? []).map((s) => s.id);
+    const { data: comments } = ids.length
+      ? await supabaseAdmin
+          .from("comments")
+          .select("id,lead_site_id,body,created_at")
+          .eq("lead_id", lead.id)
+          .in("lead_site_id", ids)
+          .order("created_at", { ascending: false })
+      : { data: [] as { id: string; lead_site_id: string | null; body: string; created_at: string }[] };
+
+    const cMap = new Map<string, { id: string; body: string; created_at: string }[]>();
+    (comments ?? []).forEach((c) => {
+      if (!c.lead_site_id) return;
+      const list = cMap.get(c.lead_site_id) ?? [];
+      list.push({ id: c.id, body: c.body, created_at: c.created_at });
+      cMap.set(c.lead_site_id, list);
+    });
+
+    return {
+      leadSites: (leadSites ?? []).map((s) => ({ ...s, comments: cMap.get(s.id) ?? [] })),
+    };
+  });
