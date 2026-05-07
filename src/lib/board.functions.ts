@@ -4,12 +4,6 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const BUCKET = "sites";
 
-function checkPassword(password: string) {
-  const expected = process.env.ADMIN_PASSWORD;
-  if (!expected) throw new Error("Admin non configurato");
-  if (password !== expected) throw new Error("Password errata");
-}
-
 function slugify(input: string) {
   const base = input
     .toLowerCase()
@@ -140,51 +134,40 @@ export const deleteOwnComment = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ---------- ADMIN ----------
+// ---------- ADMIN (no auth — site is private by obscurity of lead links) ----------
 
-export const verifyAdmin = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string }) => z.object({ password: z.string().min(1).max(200) }).parse(d))
-  .handler(async ({ data }) => {
-    checkPassword(data.password);
-    return { ok: true };
-  });
+export const adminListSites = createServerFn({ method: "GET" }).handler(async () => {
+  const { data: sites } = await supabaseAdmin
+    .from("sites")
+    .select("id,title,image_url,width,height,sort_order,created_at")
+    .order("sort_order", { ascending: true });
 
-export const adminListSites = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string }) => z.object({ password: z.string().min(1).max(200) }).parse(d))
-  .handler(async ({ data }) => {
-    checkPassword(data.password);
-    const { data: sites } = await supabaseAdmin
-      .from("sites")
-      .select("id,title,image_url,width,height,sort_order,created_at")
-      .order("sort_order", { ascending: true });
+  const ids = (sites ?? []).map((s) => s.id);
+  if (ids.length === 0) return { sites: [] };
 
-    const ids = (sites ?? []).map((s) => s.id);
-    if (ids.length === 0) return { sites: [] };
+  const [{ data: likes }, { data: comments }] = await Promise.all([
+    supabaseAdmin.from("likes").select("site_id").in("site_id", ids),
+    supabaseAdmin.from("comments").select("site_id").in("site_id", ids),
+  ]);
+  const likeCounts = new Map<string, number>();
+  (likes ?? []).forEach((l) => likeCounts.set(l.site_id, (likeCounts.get(l.site_id) ?? 0) + 1));
+  const commentCounts = new Map<string, number>();
+  (comments ?? []).forEach((c) => commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1));
 
-    const [{ data: likes }, { data: comments }] = await Promise.all([
-      supabaseAdmin.from("likes").select("site_id").in("site_id", ids),
-      supabaseAdmin.from("comments").select("site_id").in("site_id", ids),
-    ]);
-    const likeCounts = new Map<string, number>();
-    (likes ?? []).forEach((l) => likeCounts.set(l.site_id, (likeCounts.get(l.site_id) ?? 0) + 1));
-    const commentCounts = new Map<string, number>();
-    (comments ?? []).forEach((c) => commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1));
-
-    return {
-      sites: (sites ?? []).map((s) => ({
-        ...s,
-        likes: likeCounts.get(s.id) ?? 0,
-        comments: commentCounts.get(s.id) ?? 0,
-      })),
-    };
-  });
+  return {
+    sites: (sites ?? []).map((s) => ({
+      ...s,
+      likes: likeCounts.get(s.id) ?? 0,
+      comments: commentCounts.get(s.id) ?? 0,
+    })),
+  };
+});
 
 export const uploadSite = createServerFn({ method: "POST" })
   .inputValidator(
-    (d: { password: string; title?: string; fileName: string; dataUrl: string; width?: number; height?: number }) =>
+    (d: { title?: string; fileName: string; dataUrl: string; width?: number; height?: number }) =>
       z
         .object({
-          password: z.string().min(1).max(200),
           title: z.string().trim().max(120).optional(),
           fileName: z.string().min(1).max(200),
           dataUrl: z.string().min(20).max(20_000_000),
@@ -194,8 +177,6 @@ export const uploadSite = createServerFn({ method: "POST" })
         .parse(d)
   )
   .handler(async ({ data }) => {
-    checkPassword(data.password);
-
     const match = data.dataUrl.match(/^data:(.+);base64,(.+)$/);
     if (!match) throw new Error("Formato immagine non valido");
     const contentType = match[1];
@@ -211,7 +192,6 @@ export const uploadSite = createServerFn({ method: "POST" })
 
     const { data: pub } = supabaseAdmin.storage.from(BUCKET).getPublicUrl(path);
 
-    // place at top: min sort_order - 1
     const { data: minRow } = await supabaseAdmin
       .from("sites")
       .select("sort_order")
@@ -236,12 +216,10 @@ export const uploadSite = createServerFn({ method: "POST" })
   });
 
 export const reorderSites = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; ids: string[] }) =>
-    z.object({ password: z.string().min(1).max(200), ids: z.array(z.string().uuid()).min(1).max(1000) }).parse(d)
+  .inputValidator((d: { ids: string[] }) =>
+    z.object({ ids: z.array(z.string().uuid()).min(1).max(1000) }).parse(d)
   )
   .handler(async ({ data }) => {
-    checkPassword(data.password);
-    // Apply sequential sort_order based on the provided list
     await Promise.all(
       data.ids.map((id, i) =>
         supabaseAdmin.from("sites").update({ sort_order: i + 1 }).eq("id", id)
@@ -251,11 +229,8 @@ export const reorderSites = createServerFn({ method: "POST" })
   });
 
 export const deleteSite = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; id: string }) =>
-    z.object({ password: z.string().min(1).max(200), id: z.string().uuid() }).parse(d)
-  )
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    checkPassword(data.password);
     const { data: site } = await supabaseAdmin.from("sites").select("image_url").eq("id", data.id).maybeSingle();
     if (site?.image_url) {
       const path = site.image_url.split(`/${BUCKET}/`)[1];
@@ -267,17 +242,15 @@ export const deleteSite = createServerFn({ method: "POST" })
 
 // Leads management
 export const createLead = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; name: string; companyName?: string }) =>
+  .inputValidator((d: { name: string; companyName?: string }) =>
     z
       .object({
-        password: z.string().min(1).max(200),
         name: z.string().trim().min(1).max(80),
         companyName: z.string().trim().max(120).optional(),
       })
       .parse(d)
   )
   .handler(async ({ data }) => {
-    checkPassword(data.password);
     let slug = slugify(data.name);
     for (let i = 0; i < 4; i++) {
       const { data: exists } = await supabaseAdmin.from("leads").select("id").eq("slug", slug).maybeSingle();
@@ -294,10 +267,9 @@ export const createLead = createServerFn({ method: "POST" })
   });
 
 export const updateLead = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; id: string; name?: string; companyName?: string }) =>
+  .inputValidator((d: { id: string; name?: string; companyName?: string | null }) =>
     z
       .object({
-        password: z.string().min(1).max(200),
         id: z.string().uuid(),
         name: z.string().trim().min(1).max(80).optional(),
         companyName: z.string().trim().max(120).nullable().optional(),
@@ -305,7 +277,6 @@ export const updateLead = createServerFn({ method: "POST" })
       .parse(d)
   )
   .handler(async ({ data }) => {
-    checkPassword(data.password);
     const patch: { name?: string; company_name?: string | null } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.companyName !== undefined) patch.company_name = data.companyName || null;
@@ -314,55 +285,46 @@ export const updateLead = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const listLeads = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string }) => z.object({ password: z.string().min(1).max(200) }).parse(d))
-  .handler(async ({ data }) => {
-    checkPassword(data.password);
-    const { data: leads } = await supabaseAdmin
-      .from("leads")
-      .select("id,name,slug,company_name,created_at")
-      .order("created_at", { ascending: false });
+export const listLeads = createServerFn({ method: "GET" }).handler(async () => {
+  const { data: leads } = await supabaseAdmin
+    .from("leads")
+    .select("id,name,slug,company_name,created_at")
+    .order("created_at", { ascending: false });
 
-    const ids = (leads ?? []).map((l) => l.id);
-    if (ids.length === 0) return { leads: [] };
+  const ids = (leads ?? []).map((l) => l.id);
+  if (ids.length === 0) return { leads: [] };
 
-    const [{ data: likes }, { data: comments }] = await Promise.all([
-      supabaseAdmin.from("likes").select("lead_id").in("lead_id", ids),
-      supabaseAdmin.from("comments").select("lead_id").in("lead_id", ids),
-    ]);
-    const lc = new Map<string, number>();
-    (likes ?? []).forEach((l) => l.lead_id && lc.set(l.lead_id, (lc.get(l.lead_id) ?? 0) + 1));
-    const cc = new Map<string, number>();
-    (comments ?? []).forEach((c) => c.lead_id && cc.set(c.lead_id, (cc.get(c.lead_id) ?? 0) + 1));
+  const [{ data: likes }, { data: comments }] = await Promise.all([
+    supabaseAdmin.from("likes").select("lead_id").in("lead_id", ids),
+    supabaseAdmin.from("comments").select("lead_id").in("lead_id", ids),
+  ]);
+  const lc = new Map<string, number>();
+  (likes ?? []).forEach((l) => l.lead_id && lc.set(l.lead_id, (lc.get(l.lead_id) ?? 0) + 1));
+  const cc = new Map<string, number>();
+  (comments ?? []).forEach((c) => c.lead_id && cc.set(c.lead_id, (cc.get(c.lead_id) ?? 0) + 1));
 
-    return {
-      leads: (leads ?? []).map((l) => ({
-        ...l,
-        likes: lc.get(l.id) ?? 0,
-        comments: cc.get(l.id) ?? 0,
-      })),
-    };
-  });
+  return {
+    leads: (leads ?? []).map((l) => ({
+      ...l,
+      likes: lc.get(l.id) ?? 0,
+      comments: cc.get(l.id) ?? 0,
+    })),
+  };
+});
 
 export const deleteLead = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; id: string }) =>
-    z.object({ password: z.string().min(1).max(200), id: z.string().uuid() }).parse(d)
-  )
+  .inputValidator((d: { id: string }) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    checkPassword(data.password);
     await supabaseAdmin.from("leads").delete().eq("id", data.id);
     return { ok: true };
   });
 
-export const getLeadDetail = createServerFn({ method: "POST" })
-  .inputValidator((d: { password: string; slug: string }) =>
-    z.object({ password: z.string().min(1).max(200), slug: z.string().min(1).max(80) }).parse(d)
-  )
+export const getLeadDetail = createServerFn({ method: "GET" })
+  .inputValidator((d: { slug: string }) => z.object({ slug: z.string().min(1).max(80) }).parse(d))
   .handler(async ({ data }) => {
-    checkPassword(data.password);
     const { data: lead } = await supabaseAdmin
       .from("leads")
-      .select("id,name,slug,created_at")
+      .select("id,name,slug,company_name,created_at")
       .eq("slug", data.slug)
       .maybeSingle();
     if (!lead) throw new Error("Lead non trovato");
