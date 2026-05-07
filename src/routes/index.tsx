@@ -106,6 +106,7 @@ type AdminSite = {
 function BoardTab() {
   const fetchSites = useServerFn(adminListSites);
   const upload = useServerFn(uploadSite);
+  const addLink = useServerFn(addSiteLink);
   const updateSiteFn = useServerFn(updateSite);
   const del = useServerFn(deleteSite);
   const reorder = useServerFn(reorderSites);
