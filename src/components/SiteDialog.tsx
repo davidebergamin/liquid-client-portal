@@ -56,18 +56,8 @@ export function SiteDialog({ siteId, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-6xl w-[96vw] max-h-[92vh] overflow-y-auto p-0 bg-background border-border"
-        showCloseButton={false}
-      >
+      <DialogContent className="max-w-6xl w-[96vw] max-h-[92vh] overflow-y-auto p-0 bg-background border-border">
         <DialogTitle className="sr-only">{data?.site.title || "Sito"}</DialogTitle>
-        <button
-          onClick={() => onOpenChange(false)}
-          className="absolute right-4 top-4 z-10 rounded-full bg-background/80 backdrop-blur p-2 border border-border hover:bg-accent transition"
-          aria-label="Chiudi"
-        >
-          <X className="size-4" />
-        </button>
 
         {isLoading || !data ? (
           <div className="flex items-center justify-center h-96">
