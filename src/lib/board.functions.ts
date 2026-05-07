@@ -165,24 +165,27 @@ export const adminListSites = createServerFn({ method: "GET" }).handler(async ()
 
 export const uploadSite = createServerFn({ method: "POST" })
   .inputValidator(
-    (d: { title?: string; fileName: string; dataUrl: string; width?: number; height?: number }) =>
+    (d: { title?: string; fileName?: string; dataUrl?: string; width?: number; height?: number; linkUrl?: string }) =>
       z
         .object({
           title: z.string().trim().max(120).optional(),
-          fileName: z.string().min(1).max(200),
-          dataUrl: z.string().min(20).max(20_000_000),
+          fileName: z.string().min(1).max(200).optional(),
+          dataUrl: z.string().min(20).max(20_000_000).optional(),
           width: z.number().int().positive().optional(),
           height: z.number().int().positive().optional(),
+          linkUrl: z.string().url().max(500).optional(),
         })
         .parse(d)
   )
   .handler(async ({ data }) => {
+    if (!data.dataUrl) throw new Error("Immagine richiesta");
     const match = data.dataUrl.match(/^data:(.+);base64,(.+)$/);
     if (!match) throw new Error("Formato immagine non valido");
     const contentType = match[1];
     const buffer = Buffer.from(match[2], "base64");
 
-    const ext = (data.fileName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const fileName = data.fileName || "image.jpg";
+    const ext = (fileName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
     const path = `${crypto.randomUUID()}.${ext || "jpg"}`;
 
     const { error: upErr } = await supabaseAdmin.storage
@@ -205,6 +208,7 @@ export const uploadSite = createServerFn({ method: "POST" })
       .insert({
         title: data.title || null,
         image_url: pub.publicUrl,
+        link_url: data.linkUrl || null,
         width: data.width ?? null,
         height: data.height ?? null,
         sort_order: nextOrder,
@@ -213,6 +217,23 @@ export const uploadSite = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
     return { site: row };
+  });
+
+export const updateSite = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string; title?: string | null; linkUrl?: string | null }) =>
+    z.object({
+      id: z.string().uuid(),
+      title: z.string().trim().max(120).nullable().optional(),
+      linkUrl: z.string().trim().max(500).nullable().optional(),
+    }).parse(d)
+  )
+  .handler(async ({ data }) => {
+    const patch: { title?: string | null; link_url?: string | null } = {};
+    if (data.title !== undefined) patch.title = data.title || null;
+    if (data.linkUrl !== undefined) patch.link_url = data.linkUrl || null;
+    const { error } = await supabaseAdmin.from("sites").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 export const reorderSites = createServerFn({ method: "POST" })
