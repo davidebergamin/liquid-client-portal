@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, X } from "lucide-react";
+import { Heart, MessageCircle, Send, X, ExternalLink } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -11,6 +11,7 @@ type Props = {
   liked: boolean;
   commentsCount: number;
   busy?: boolean;
+  linkUrl?: string | null;
   onToggleLike: () => void;
   onSubmitComment: (body: string) => Promise<void> | void;
   onZoom: () => void;
