@@ -45,7 +45,7 @@ export const getBoard = createServerFn({ method: "GET" })
 
     const likedSet = new Set((likes ?? []).map((l) => l.site_id));
     const commentCounts = new Map<string, number>();
-    (comments ?? []).forEach((c) => commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1));
+    (comments ?? []).forEach((c) => { if (c.site_id) commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1); });
 
     return {
       lead,
@@ -152,7 +152,7 @@ export const adminListSites = createServerFn({ method: "GET" }).handler(async ()
   const likeCounts = new Map<string, number>();
   (likes ?? []).forEach((l) => likeCounts.set(l.site_id, (likeCounts.get(l.site_id) ?? 0) + 1));
   const commentCounts = new Map<string, number>();
-  (comments ?? []).forEach((c) => commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1));
+  (comments ?? []).forEach((c) => { if (c.site_id) commentCounts.set(c.site_id, (commentCounts.get(c.site_id) ?? 0) + 1); });
 
   return {
     sites: (sites ?? []).map((s) => ({
@@ -351,6 +351,7 @@ export const getLeadDetail = createServerFn({ method: "GET" })
     const likedSet = new Set((likes ?? []).map((l) => l.site_id));
     const cMap = new Map<string, { id: string; body: string; created_at: string }[]>();
     (comments ?? []).forEach((c) => {
+      if (!c.site_id) return;
       const list = cMap.get(c.site_id) ?? [];
       list.push({ id: c.id, body: c.body, created_at: c.created_at });
       cMap.set(c.site_id, list);
