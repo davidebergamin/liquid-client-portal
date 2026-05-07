@@ -265,8 +265,8 @@ function BoardTab() {
           ) : (
             <div className="flex flex-col items-center gap-2">
               <Upload className="size-6 text-muted-foreground" />
-              <p className="font-display text-2xl">Trascina, incolla o seleziona immagini</p>
-              <p className="text-xs text-muted-foreground">⌘+V per incollare. Caricamento multiplo supportato.</p>
+              <p className="font-display text-2xl">Trascina, incolla immagini o link</p>
+              <p className="text-xs text-muted-foreground">⌘+V per incollare immagini o un URL. Caricamento multiplo supportato.</p>
             </div>
           )}
         </label>
