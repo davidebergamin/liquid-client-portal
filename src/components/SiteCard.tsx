@@ -71,6 +71,18 @@ export function SiteCard({
         )}
       </button>
 
+      {linkUrl && (
+        <a
+          href={linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block px-3 py-2 border-t border-border text-xs font-mono uppercase tracking-wider hover:bg-accent inline-flex items-center gap-1.5"
+          style={{ width: "100%" }}
+        >
+          <ExternalLink className="size-3.5" /> Visita il sito
+        </a>
+      )}
+
       <div className="px-3 py-2.5 flex items-center gap-1">
         <button
           type="button"
