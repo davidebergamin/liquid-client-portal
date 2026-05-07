@@ -290,10 +290,12 @@ function SortableSiteCard({
   site,
   index,
   onDelete,
+  onSetLink,
 }: {
   site: AdminSite;
   index: number;
   onDelete: () => void;
+  onSetLink: (url: string | null) => Promise<void> | void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: site.id });
   const style = {
@@ -302,6 +304,8 @@ function SortableSiteCard({
     zIndex: isDragging ? 50 : undefined,
     opacity: isDragging ? 0.6 : 1,
   };
+  const [editingLink, setEditingLink] = useState(false);
+  const [linkValue, setLinkValue] = useState(site.link_url ?? "");
 
   return (
     <div
@@ -333,6 +337,14 @@ function SortableSiteCard({
           <span className="inline-flex items-center gap-1"><Heart className="size-3.5" /> {site.likes}</span>
           <span className="inline-flex items-center gap-1"><MessageCircle className="size-3.5" /> {site.comments}</span>
           <button
+            onClick={() => setEditingLink((v) => !v)}
+            className={`hover:text-foreground transition ${site.link_url ? "text-foreground" : ""}`}
+            aria-label="Imposta link"
+            title={site.link_url || "Aggiungi link"}
+          >
+            <LinkIcon className="size-3.5" />
+          </button>
+          <button
             onClick={onDelete}
             className="text-destructive hover:text-destructive/80 transition"
             aria-label="Elimina"
@@ -341,8 +353,31 @@ function SortableSiteCard({
           </button>
         </div>
       </div>
+      {editingLink && (
+        <div className="px-4 pb-3 flex gap-2">
+          <Input
+            value={linkValue}
+            onChange={(e) => setLinkValue(e.target.value)}
+            placeholder="https://example.com"
+            className="h-8 text-xs"
+          />
+          <Button
+            size="sm"
+            onClick={async () => {
+              let url = linkValue.trim();
+              if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+              await onSetLink(url || null);
+              setLinkValue(url);
+              setEditingLink(false);
+            }}
+          >
+            Salva
+          </Button>
+        </div>
+      )}
     </div>
   );
+}
 }
 
 function LeadsTab({ onOpen }: { onOpen: (slug: string) => void }) {
