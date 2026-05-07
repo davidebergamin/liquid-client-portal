@@ -1,10 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Loader2, X } from "lucide-react";
-import { addComment, getBoard, toggleLike } from "@/lib/board.functions";
+import { Loader2, X, Upload, Link as LinkIcon, Trash2, ExternalLink, MessageCircle, Send } from "lucide-react";
+import {
+  addComment,
+  addLeadSite,
+  addLeadSiteComment,
+  deleteLeadSite,
+  getBoard,
+  getLeadUploads,
+  toggleLike,
+} from "@/lib/board.functions";
 import { SiteCard } from "@/components/SiteCard";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Toaster, toast } from "sonner";
 
 export const Route = createFileRoute("/b/$slug")({
@@ -23,13 +34,22 @@ export const Route = createFileRoute("/b/$slug")({
 function LeadBoardPage() {
   const { slug } = Route.useParams();
   const fetchBoard = useServerFn(getBoard);
+  const fetchUploads = useServerFn(getLeadUploads);
   const likeFn = useServerFn(toggleLike);
   const commentFn = useServerFn(addComment);
+  const addLeadSiteFn = useServerFn(addLeadSite);
+  const delLeadSiteFn = useServerFn(deleteLeadSite);
+  const addLeadCommentFn = useServerFn(addLeadSiteComment);
   const qc = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["board", slug],
     queryFn: () => fetchBoard({ data: { slug } }),
+  });
+
+  const { data: uploads } = useQuery({
+    queryKey: ["lead-uploads", slug],
+    queryFn: () => fetchUploads({ data: { slug } }),
   });
 
   const [zoomed, setZoomed] = useState<string | null>(null);
@@ -40,9 +60,15 @@ function LeadBoardPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const invalidateUploads = () => qc.invalidateQueries({ queryKey: ["lead-uploads", slug] });
+
   if (error) throw error;
 
-  const zoomedSite = data?.sites.find((s) => s.id === zoomed) ?? null;
+  const allImages = [
+    ...(data?.sites ?? []).map((s) => ({ id: s.id, url: s.image_url, title: s.title })),
+    ...(uploads?.leadSites.filter((s) => s.image_url).map((s) => ({ id: s.id, url: s.image_url!, title: s.title })) ?? []),
+  ];
+  const zoomedSite = allImages.find((s) => s.id === zoomed) ?? null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -69,7 +95,7 @@ function LeadBoardPage() {
         </p>
       </section>
 
-      <main className="px-6 md:px-10 pb-24 max-w-[1600px] mx-auto">
+      <main className="px-6 md:px-10 pb-12 max-w-[1600px] mx-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -89,6 +115,7 @@ function LeadBoardPage() {
                 height={s.height}
                 liked={s.liked}
                 commentsCount={s.comments}
+                linkUrl={s.link_url}
                 busy={likeMut.isPending && likeMut.variables === s.id}
                 onToggleLike={() => likeMut.mutate(s.id)}
                 onSubmitComment={async (body) => {
@@ -103,6 +130,57 @@ function LeadBoardPage() {
         )}
       </main>
 
+      {/* Lead's own uploads */}
+      <section className="px-6 md:px-10 pb-24 max-w-[1600px] mx-auto">
+        <div className="border-t border-border pt-12">
+          <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+            [ 02 ] — Le tue ispirazioni
+          </p>
+          <h2 className="font-display text-4xl md:text-5xl mt-3">
+            Aggiungi siti o immagini che ti ispirano
+          </h2>
+          <p className="text-muted-foreground mt-3 max-w-xl">
+            Carica screenshot o incolla link a siti che ti piacciono. Vedrò tutto.
+          </p>
+
+          <LeadUploader
+            slug={slug}
+            onAddImage={async (payload) => {
+              await addLeadSiteFn({ data: { slug, ...payload } });
+              invalidateUploads();
+              toast.success("Aggiunto");
+            }}
+            onAddLink={async (payload) => {
+              await addLeadSiteFn({ data: { slug, ...payload } });
+              invalidateUploads();
+              toast.success("Link aggiunto");
+            }}
+          />
+
+          {uploads?.leadSites && uploads.leadSites.length > 0 && (
+            <div className="masonry mt-8">
+              {uploads.leadSites.map((s) => (
+                <LeadUploadCard
+                  key={s.id}
+                  site={s}
+                  onZoom={() => s.image_url && setZoomed(s.id)}
+                  onDelete={async () => {
+                    await delLeadSiteFn({ data: { slug, id: s.id } });
+                    invalidateUploads();
+                    toast.success("Rimosso");
+                  }}
+                  onComment={async (body) => {
+                    await addLeadCommentFn({ data: { slug, leadSiteId: s.id, body } });
+                    invalidateUploads();
+                    toast.success("Commento aggiunto");
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       {zoomedSite && (
         <div
           className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-4 md:p-10 cursor-zoom-out animate-in fade-in"
@@ -116,11 +194,237 @@ function LeadBoardPage() {
             <X className="size-5" />
           </button>
           <img
-            src={zoomedSite.image_url}
+            src={zoomedSite.url}
             alt={zoomedSite.title ?? "Sito"}
             className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeadUploader({
+  slug,
+  onAddImage,
+  onAddLink,
+}: {
+  slug: string;
+  onAddImage: (p: { title?: string; fileName: string; dataUrl: string; width?: number; height?: number }) => Promise<void>;
+  onAddLink: (p: { title?: string; linkUrl: string }) => Promise<void>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [linkValue, setLinkValue] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true);
+    try {
+      for (const file of Array.from(files)) {
+        const dataUrl: string = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result as string);
+          r.onerror = () => rej(r.error);
+          r.readAsDataURL(file);
+        });
+        const dims = await new Promise<{ width: number; height: number }>((res) => {
+          const img = new Image();
+          img.onload = () => res({ width: img.naturalWidth, height: img.naturalHeight });
+          img.onerror = () => res({ width: 0, height: 0 });
+          img.src = dataUrl;
+        });
+        await onAddImage({
+          title: file.name.replace(/\.[^/.]+$/, "").slice(0, 120),
+          fileName: file.name,
+          dataUrl,
+          width: dims.width || undefined,
+          height: dims.height || undefined,
+        });
+      }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitLink = async () => {
+    let url = linkValue.trim();
+    if (!url) return;
+    if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+    setBusy(true);
+    try {
+      await onAddLink({ linkUrl: url, title: linkTitle.trim() || undefined });
+      setLinkValue("");
+      setLinkTitle("");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 grid md:grid-cols-2 gap-4">
+      <label className="border-2 border-dashed border-border rounded-xl p-6 text-center cursor-pointer hover:bg-accent/40 transition flex flex-col items-center justify-center gap-2">
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
+        />
+        {busy ? (
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        ) : (
+          <>
+            <Upload className="size-5 text-muted-foreground" />
+            <p className="font-display text-xl">Carica immagini</p>
+            <p className="text-xs text-muted-foreground">Screenshot o foto di siti che ti piacciono</p>
+          </>
+        )}
+      </label>
+
+      <div className="border border-border rounded-xl p-6 space-y-3">
+        <div className="flex items-center gap-2">
+          <LinkIcon className="size-5 text-muted-foreground" />
+          <p className="font-display text-xl">Aggiungi link</p>
+        </div>
+        <Input
+          value={linkValue}
+          onChange={(e) => setLinkValue(e.target.value)}
+          placeholder="https://example.com"
+        />
+        <Input
+          value={linkTitle}
+          onChange={(e) => setLinkTitle(e.target.value)}
+          placeholder="Titolo (opzionale)"
+          maxLength={120}
+        />
+        <Button onClick={submitLink} disabled={!linkValue.trim() || busy} className="w-full">
+          Aggiungi link
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+type LeadSite = {
+  id: string;
+  title: string | null;
+  image_url: string | null;
+  link_url: string | null;
+  created_at: string;
+  comments: { id: string; body: string; created_at: string }[];
+};
+
+function LeadUploadCard({
+  site,
+  onZoom,
+  onDelete,
+  onComment,
+}: {
+  site: LeadSite;
+  onZoom: () => void;
+  onDelete: () => Promise<void>;
+  onComment: (body: string) => Promise<void>;
+}) {
+  const [composing, setComposing] = useState(false);
+  const [body, setBody] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const previewHost = site.link_url ? new URL(site.link_url).hostname.replace(/^www\./, "") : null;
+
+  return (
+    <div className="rounded-xl overflow-hidden border border-border bg-card group">
+      {site.image_url ? (
+        <button type="button" onClick={onZoom} className="block w-full cursor-zoom-in">
+          <img src={site.image_url} alt={site.title ?? ""} className="w-full h-auto block" loading="lazy" />
+        </button>
+      ) : site.link_url ? (
+        <a
+          href={site.link_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block aspect-[16/10] bg-accent flex items-center justify-center text-center p-6 hover:bg-accent/70 transition"
+        >
+          <div>
+            <ExternalLink className="size-8 mx-auto mb-3 text-muted-foreground" />
+            <p className="font-display text-2xl break-all">{site.title || previewHost}</p>
+            <p className="font-mono text-[11px] text-muted-foreground mt-2">{previewHost}</p>
+          </div>
+        </a>
+      ) : null}
+
+      {site.link_url && site.image_url && (
+        <a
+          href={site.link_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block px-3 py-2 border-t border-border text-xs font-mono uppercase tracking-wider hover:bg-accent inline-flex items-center gap-1.5 w-full"
+        >
+          <ExternalLink className="size-3.5" /> {previewHost}
+        </a>
+      )}
+
+      <div className="px-3 py-2.5 flex items-center gap-1 border-t border-border">
+        <button
+          type="button"
+          onClick={() => setComposing((v) => !v)}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium hover:bg-accent transition"
+        >
+          <MessageCircle className="size-4" />
+          Commenta{site.comments.length > 0 ? ` (${site.comments.length})` : ""}
+        </button>
+        <button
+          type="button"
+          onClick={async () => { setBusy(true); try { await onDelete(); } finally { setBusy(false); } }}
+          disabled={busy}
+          className="px-3 py-2 text-destructive hover:bg-accent rounded-md"
+          aria-label="Elimina"
+        >
+          <Trash2 className="size-4" />
+        </button>
+      </div>
+
+      {composing && (
+        <div className="px-3 pb-3 space-y-2 border-t border-border pt-3">
+          <Textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Cosa ti piace di questo?"
+            maxLength={500}
+            rows={2}
+            autoFocus
+          />
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => { setComposing(false); setBody(""); }} className="flex-1">
+              <X className="size-3.5 mr-1" /> Annulla
+            </Button>
+            <Button
+              size="sm"
+              disabled={!body.trim() || busy}
+              onClick={async () => {
+                setBusy(true);
+                try { await onComment(body.trim()); setBody(""); setComposing(false); }
+                finally { setBusy(false); }
+              }}
+              className="flex-1"
+            >
+              <Send className="size-3.5 mr-1" /> Invia
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {site.comments.length > 0 && (
+        <div className="px-3 pb-3 space-y-1.5 border-t border-border pt-3">
+          {site.comments.map((c) => (
+            <p key={c.id} className="text-sm border-l-2 border-border pl-3">{c.body}</p>
+          ))}
         </div>
       )}
     </div>
