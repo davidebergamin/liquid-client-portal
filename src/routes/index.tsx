@@ -606,6 +606,47 @@ function LeadDetail({ slug, onBack }: { slug: string; onBack: () => void }) {
               ))}
             </div>
           </div>
+          {uploads?.leadSites && uploads.leadSites.length > 0 && (
+            <div className="mt-16 space-y-4">
+              <h2 className="font-display text-3xl">Aggiunte dal lead ({uploads.leadSites.length})</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {uploads.leadSites.map((s) => (
+                  <div key={s.id} className="rounded-xl overflow-hidden border border-border bg-card">
+                    {s.image_url ? (
+                      <img src={s.image_url} alt={s.title ?? ""} className="w-full h-auto block" loading="lazy" />
+                    ) : (
+                      <a
+                        href={s.link_url ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block aspect-[16/10] bg-accent flex items-center justify-center p-6 text-center hover:bg-accent/70"
+                      >
+                        <div>
+                          <ExternalLink className="size-6 mx-auto mb-2 text-muted-foreground" />
+                          <p className="font-display text-xl break-all">{s.title || s.link_url}</p>
+                        </div>
+                      </a>
+                    )}
+                    <div className="p-4 space-y-2">
+                      {s.title && <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground truncate">{s.title}</p>}
+                      {s.link_url && (
+                        <a href={s.link_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary inline-flex items-center gap-1 break-all hover:underline">
+                          <ExternalLink className="size-3" /> {s.link_url}
+                        </a>
+                      )}
+                      {s.comments.length > 0 && (
+                        <div className="space-y-1.5 pt-2 border-t border-border">
+                          {s.comments.map((c) => (
+                            <p key={c.id} className="text-sm border-l-2 border-border pl-3">{c.body}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </main>
       )}
     </div>
