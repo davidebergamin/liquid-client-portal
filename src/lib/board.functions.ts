@@ -31,7 +31,7 @@ export const getBoard = createServerFn({ method: "GET" })
 
     const { data: sites, error } = await supabaseAdmin
       .from("sites")
-      .select("id,title,image_url,width,height,sort_order,created_at")
+      .select("id,title,image_url,link_url,width,height,sort_order,created_at")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
 
@@ -139,7 +139,7 @@ export const deleteOwnComment = createServerFn({ method: "POST" })
 export const adminListSites = createServerFn({ method: "GET" }).handler(async () => {
   const { data: sites } = await supabaseAdmin
     .from("sites")
-    .select("id,title,image_url,width,height,sort_order,created_at")
+    .select("id,title,image_url,link_url,width,height,sort_order,created_at")
     .order("sort_order", { ascending: true });
 
   const ids = (sites ?? []).map((s) => s.id);
