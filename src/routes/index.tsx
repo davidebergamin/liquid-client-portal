@@ -427,8 +427,8 @@ function LeadsTab({ onOpen }: { onOpen: (slug: string) => void }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-  const linkFor = (slug: string) => `${baseUrl}/b/${slug}`;
+  const publicBaseUrl = "https://liquid-moodboard.lovable.app";
+  const linkFor = (slug: string) => `${publicBaseUrl}/b/${slug}`;
 
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
