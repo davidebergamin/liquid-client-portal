@@ -153,12 +153,24 @@ function LeadBoardPage() {
                     liked={s.liked}
                     commentsCount={s.comments}
                     linkUrl={s.link_url}
-                    busy={likeMut.isPending && likeMut.variables === s.id}
+                    busy={false}
                     onToggleLike={() => likeMut.mutate(s.id)}
                     onSubmitComment={async (body) => {
-                      await commentFn({ data: { slug, siteId: s.id, body } });
-                      toast.success("Commento aggiunto");
-                      qc.invalidateQueries({ queryKey: ["board", slug] });
+                      qc.setQueryData<any>(["board", slug], (old: any) => {
+                        if (!old) return old;
+                        return {
+                          ...old,
+                          sites: old.sites.map((x: any) =>
+                            x.id === s.id ? { ...x, comments: x.comments + 1 } : x
+                          ),
+                        };
+                      });
+                      try {
+                        await commentFn({ data: { slug, siteId: s.id, body } });
+                        toast.success("Commento aggiunto");
+                      } finally {
+                        qc.invalidateQueries({ queryKey: ["board", slug] });
+                      }
                     }}
                     onZoom={() => setZoomed(s.id)}
                   />
