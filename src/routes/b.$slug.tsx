@@ -56,8 +56,25 @@ function LeadBoardPage() {
 
   const likeMut = useMutation({
     mutationFn: (siteId: string) => likeFn({ data: { slug, siteId } }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["board", slug] }),
-    onError: (e: Error) => toast.error(e.message),
+    onMutate: async (siteId: string) => {
+      await qc.cancelQueries({ queryKey: ["board", slug] });
+      const prev = qc.getQueryData<any>(["board", slug]);
+      qc.setQueryData<any>(["board", slug], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          sites: old.sites.map((s: any) =>
+            s.id === siteId ? { ...s, liked: !s.liked } : s
+          ),
+        };
+      });
+      return { prev };
+    },
+    onError: (e: Error, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(["board", slug], ctx.prev);
+      toast.error(e.message);
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: ["board", slug] }),
   });
 
   const invalidateUploads = () => qc.invalidateQueries({ queryKey: ["lead-uploads", slug] });
