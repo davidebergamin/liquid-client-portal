@@ -141,42 +141,68 @@ function LeadBoardPage() {
               <div className="border border-dashed border-border rounded-xl py-24 text-center">
                 <p className="font-display text-3xl">Board vuota</p>
               </div>
-            ) : (
-              <div className="masonry">
-                {data.sites.map((s) => (
-                  <SiteCard
-                    key={s.id}
-                    title={s.title}
-                    imageUrl={s.image_url}
-                    width={s.width}
-                    height={s.height}
-                    liked={s.liked}
-                    commentsCount={s.comments}
-                    linkUrl={s.link_url}
-                    busy={false}
-                    onToggleLike={() => likeMut.mutate(s.id)}
-                    onSubmitComment={async (body) => {
-                      qc.setQueryData<any>(["board", slug], (old: any) => {
-                        if (!old) return old;
-                        return {
-                          ...old,
-                          sites: old.sites.map((x: any) =>
-                            x.id === s.id ? { ...x, comments: x.comments + 1 } : x
-                          ),
-                        };
-                      });
-                      try {
-                        await commentFn({ data: { slug, siteId: s.id, body } });
-                        toast.success("Commento aggiunto");
-                      } finally {
-                        qc.invalidateQueries({ queryKey: ["board", slug] });
-                      }
-                    }}
-                    onZoom={() => setZoomed(s.id)}
-                  />
-                ))}
-              </div>
-            )}
+            ) : (() => {
+              const linkSites = data.sites.filter((s) => s.link_url);
+              const screenshotSites = data.sites.filter((s) => !s.link_url);
+              const renderCard = (s: typeof data.sites[number]) => (
+                <SiteCard
+                  key={s.id}
+                  title={s.title}
+                  imageUrl={s.image_url}
+                  width={s.width}
+                  height={s.height}
+                  liked={s.liked}
+                  commentsCount={s.comments}
+                  linkUrl={s.link_url}
+                  busy={false}
+                  onToggleLike={() => likeMut.mutate(s.id)}
+                  onSubmitComment={async (body) => {
+                    qc.setQueryData<any>(["board", slug], (old: any) => {
+                      if (!old) return old;
+                      return {
+                        ...old,
+                        sites: old.sites.map((x: any) =>
+                          x.id === s.id ? { ...x, comments: x.comments + 1 } : x
+                        ),
+                      };
+                    });
+                    try {
+                      await commentFn({ data: { slug, siteId: s.id, body } });
+                      toast.success("Commento aggiunto");
+                    } finally {
+                      qc.invalidateQueries({ queryKey: ["board", slug] });
+                    }
+                  }}
+                  onZoom={() => setZoomed(s.id)}
+                />
+              );
+              return (
+                <div className="space-y-16">
+                  {linkSites.length > 0 && (
+                    <div>
+                      <div className="flex items-baseline justify-between mb-6">
+                        <h2 className="font-display text-3xl md:text-4xl">Siti di riferimento</h2>
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                          {linkSites.length} {linkSites.length === 1 ? "link" : "link"}
+                        </span>
+                      </div>
+                      <div className="masonry">{linkSites.map(renderCard)}</div>
+                    </div>
+                  )}
+                  {screenshotSites.length > 0 && (
+                    <div>
+                      <div className="flex items-baseline justify-between mb-6">
+                        <h2 className="font-display text-3xl md:text-4xl">Screenshot &amp; immagini</h2>
+                        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                          {screenshotSites.length} {screenshotSites.length === 1 ? "immagine" : "immagini"}
+                        </span>
+                      </div>
+                      <div className="masonry">{screenshotSites.map(renderCard)}</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </main>
         </>
       ) : (
