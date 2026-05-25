@@ -33,6 +33,7 @@ export function SiteCard({
   const [composing, setComposing] = useState(false);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const submit = async () => {
     if (!body.trim()) return;
@@ -46,17 +47,31 @@ export function SiteCard({
     }
   };
 
+  const ratio = width && height ? `${width} / ${height}` : "4 / 3";
+
   const imgInner = (
     <>
-      <img
-        src={imageUrl}
-        alt={title ?? "Sito di riferimento"}
-        width={width ?? undefined}
-        height={height ?? undefined}
-        loading="lazy"
-        className="w-full h-auto block"
-        draggable={false}
-      />
+      <div
+        className="w-full bg-muted/40 relative overflow-hidden"
+        style={{ aspectRatio: ratio }}
+      >
+        {!loaded && (
+          <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted/60 via-muted/30 to-muted/60" />
+        )}
+        <img
+          src={imageUrl}
+          alt={title ?? "Sito di riferimento"}
+          width={width ?? undefined}
+          height={height ?? undefined}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          className={`absolute inset-0 w-full h-full object-cover block transition-opacity duration-700 ease-out ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
+          draggable={false}
+        />
+      </div>
       {liked && (
         <div className="absolute top-3 right-3 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 flex items-center gap-1.5 shadow-sm pointer-events-none">
           <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
