@@ -177,29 +177,43 @@ function LeadBoardPage() {
                 />
               );
               return (
-                <div className="space-y-16">
-                  {linkSites.length > 0 && (
-                    <div>
-                      <div className="flex items-baseline justify-between mb-6">
-                        <h2 className="font-display text-3xl md:text-4xl">Siti di riferimento</h2>
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                          {linkSites.length} {linkSites.length === 1 ? "link" : "link"}
-                        </span>
+                <div className="space-y-20">
+                  <section>
+                    <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-border">
+                      <div>
+                        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
+                          [ A ] — Siti di riferimento
+                        </p>
+                        <h2 className="font-display text-4xl md:text-5xl">Siti completi</h2>
                       </div>
+                      <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                        {linkSites.length} {linkSites.length === 1 ? "sito" : "siti"}
+                      </span>
+                    </div>
+                    {linkSites.length > 0 ? (
                       <div className="masonry">{linkSites.map(renderCard)}</div>
-                    </div>
-                  )}
-                  {screenshotSites.length > 0 && (
-                    <div>
-                      <div className="flex items-baseline justify-between mb-6">
-                        <h2 className="font-display text-3xl md:text-4xl">Screenshot &amp; immagini</h2>
-                        <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                          {screenshotSites.length} {screenshotSites.length === 1 ? "immagine" : "immagini"}
-                        </span>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic py-8">Nessun sito di riferimento.</p>
+                    )}
+                  </section>
+                  <section>
+                    <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-border">
+                      <div>
+                        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
+                          [ B ] — Dettagli &amp; ispirazioni
+                        </p>
+                        <h2 className="font-display text-4xl md:text-5xl">Screenshot &amp; immagini</h2>
                       </div>
-                      <div className="masonry">{screenshotSites.map(renderCard)}</div>
+                      <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                        {screenshotSites.length} {screenshotSites.length === 1 ? "immagine" : "immagini"}
+                      </span>
                     </div>
-                  )}
+                    {screenshotSites.length > 0 ? (
+                      <div className="masonry">{screenshotSites.map(renderCard)}</div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground italic py-8">Nessuno screenshot in questa board.</p>
+                    )}
+                  </section>
                 </div>
               );
             })()}
