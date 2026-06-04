@@ -235,8 +235,25 @@ async function fetchSitePreview(url: string): Promise<{ title: string | null; im
       redirect: "follow",
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { title: null, image: null };
-    const html = (await res.text()).slice(0, 300_000);
+    if (!res.ok || !res.body) return { title: null, image: null };
+
+    // Stream and cap at ~200KB to avoid blowing the worker memory limit on large pages.
+    const MAX_BYTES = 200_000;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder("utf-8", { fatal: false });
+    let html = "";
+    let received = 0;
+    try {
+      while (received < MAX_BYTES) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.byteLength;
+        html += decoder.decode(value, { stream: true });
+      }
+    } finally {
+      try { await reader.cancel(); } catch { /* ignore */ }
+    }
+
     const meta = (prop: string) => {
       const re = new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']+)["']`, "i");
       const m = html.match(re) || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]*(?:property|name)=["']${prop}["']`, "i"));
