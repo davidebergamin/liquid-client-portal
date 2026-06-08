@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, X, ExternalLink, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Send, X, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ type Props = {
   busy?: boolean;
   linkUrl?: string | null;
   status?: string;
+  isLiquid?: boolean;
   onToggleLike: () => void;
   onSubmitComment: (body: string) => Promise<void> | void;
   onOpen: () => void;
@@ -26,6 +27,7 @@ export function SiteCard({
   busy,
   linkUrl,
   status = "ready",
+  isLiquid = false,
   onToggleLike,
   onSubmitComment,
   onOpen,
@@ -52,7 +54,13 @@ export function SiteCard({
   const failed = status === "failed";
 
   return (
-    <article className="group w-full overflow-hidden rounded-2xl bg-card border border-border transition-all duration-300 hover:border-foreground/40 hover:shadow-2xl">
+    <article
+      className={`group w-full overflow-hidden rounded-2xl transition-all duration-300 ${
+        isLiquid
+          ? "relative bg-card border border-transparent shadow-[0_20px_60px_-25px_rgba(80,120,255,0.45)] hover:shadow-[0_30px_80px_-25px_rgba(80,120,255,0.6)] [background-clip:padding-box] before:absolute before:inset-0 before:rounded-2xl before:p-[1.5px] before:bg-[linear-gradient(135deg,#6EE7F9_0%,#A78BFA_50%,#F472B6_100%)] before:[mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] before:[-webkit-mask:linear-gradient(#000,#000)_content-box,linear-gradient(#000,#000)] before:[-webkit-mask-composite:xor] before:[mask-composite:exclude] before:pointer-events-none"
+          : "bg-card border border-border hover:border-foreground/40 hover:shadow-2xl"
+      }`}
+    >
       <button
         type="button"
         onClick={onOpen}
@@ -93,6 +101,12 @@ export function SiteCard({
             <div className="absolute top-4 right-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
               <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
               <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
+            </div>
+          )}
+          {isLiquid && (
+            <div className="absolute top-4 left-4 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-none text-white" style={{ background: "linear-gradient(135deg,#6EE7F9 0%,#A78BFA 50%,#F472B6 100%)" }}>
+              <Sparkles className="size-3.5" />
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-semibold">By Liquid</span>
             </div>
           )}
           {host && (

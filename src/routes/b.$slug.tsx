@@ -199,6 +199,7 @@ function LeadBoardPage() {
                   commentsCount={s.comments}
                   linkUrl={s.link_url}
                   status={(s as { screenshot_status?: string }).screenshot_status ?? "ready"}
+                  isLiquid={(s as { is_liquid?: boolean }).is_liquid ?? false}
                   busy={false}
                   onToggleLike={() => likeMut.mutate(s.id)}
                   onSubmitComment={async (body) => {

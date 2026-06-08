@@ -101,6 +101,7 @@ type AdminSite = {
   created_at: string;
   likes: number;
   comments: number;
+  is_liquid?: boolean;
 };
 
 function BoardTab() {
@@ -378,11 +379,16 @@ function SortableSiteCard({
     />
   );
 
+  const isLiquid = !!site.is_liquid;
   return (
     <article
       ref={setNodeRef}
       style={style}
-      className="group relative w-full rounded-2xl overflow-hidden border border-border bg-card transition-shadow duration-300 hover:shadow-2xl"
+      className={`group relative w-full rounded-2xl overflow-hidden transition-shadow duration-300 hover:shadow-2xl ${
+        isLiquid
+          ? "bg-card shadow-[0_20px_60px_-25px_rgba(80,120,255,0.45)] ring-2 ring-transparent [background:linear-gradient(var(--card),var(--card))_padding-box,linear-gradient(135deg,#6EE7F9,#A78BFA,#F472B6)_border-box] border-2 border-transparent"
+          : "bg-card border border-border"
+      }`}
     >
       <button
         type="button"
@@ -401,6 +407,11 @@ function SortableSiteCard({
           </a>
         ) : (
           mediaInner
+        )}
+        {isLiquid && (
+          <div className="absolute top-4 right-4 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-none text-white" style={{ background: "linear-gradient(135deg,#6EE7F9 0%,#A78BFA 50%,#F472B6 100%)" }}>
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-semibold">By Liquid</span>
+          </div>
         )}
         {host && (
           <div className="absolute bottom-4 left-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">

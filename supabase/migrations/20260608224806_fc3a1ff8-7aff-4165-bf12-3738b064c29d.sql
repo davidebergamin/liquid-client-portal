@@ -1,0 +1,1 @@
+ALTER TABLE public.sites ADD COLUMN IF NOT EXISTS is_liquid boolean NOT NULL DEFAULT false;
