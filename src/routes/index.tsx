@@ -197,6 +197,28 @@ function BoardTab() {
   });
 
 
+  // Auto-trigger screenshot capture for any link-site still pending
+  useEffect(() => {
+    const pending = (data?.sites ?? []).filter(
+      (s) => s.screenshot_status === "pending" && s.link_url
+    );
+    if (!pending.length) return;
+    pending.forEach((s) => {
+      fetch(`/api/public/capture/sites/${s.id}`, { method: "POST" })
+        .then(() => qc.invalidateQueries({ queryKey: ["admin-sites"] }))
+        .catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.sites.filter((s) => s.screenshot_status === "pending").map((s) => s.id).join(",")]);
+
+  // Poll while any site is pending
+  useEffect(() => {
+    const hasPending = (data?.sites ?? []).some((s) => s.screenshot_status === "pending");
+    if (!hasPending) return;
+    const t = setInterval(() => qc.invalidateQueries({ queryKey: ["admin-sites"] }), 4000);
+    return () => clearInterval(t);
+  }, [data?.sites, qc]);
+
   useEffect(() => {
     const isEditable = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
