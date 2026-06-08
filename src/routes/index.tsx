@@ -101,6 +101,7 @@ type AdminSite = {
   created_at: string;
   likes: number;
   comments: number;
+  is_liquid?: boolean;
 };
 
 function BoardTab() {
