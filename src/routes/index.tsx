@@ -92,6 +92,8 @@ type AdminSite = {
   id: string;
   title: string | null;
   image_url: string;
+  full_image_url: string | null;
+  screenshot_status: string | null;
   link_url: string | null;
   width: number | null;
   height: number | null;
