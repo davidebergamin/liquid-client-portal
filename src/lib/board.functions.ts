@@ -31,9 +31,10 @@ export const getBoard = createServerFn({ method: "GET" })
 
     const { data: sites, error } = await supabaseAdmin
       .from("sites")
-      .select("id,title,image_url,link_url,width,height,sort_order,created_at")
+      .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,sort_order,created_at")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
+
 
     const ids = (sites ?? []).map((s) => s.id);
 
@@ -46,10 +47,11 @@ export const getBoard = createServerFn({ method: "GET" })
         : Promise.resolve({ data: [] as { site_id: string | null }[] }),
       supabaseAdmin
         .from("lead_sites")
-        .select("id,title,image_url,link_url,width,height,created_at")
+        .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,created_at")
         .eq("lead_id", lead.id)
         .order("created_at", { ascending: false }),
     ]);
+
 
     const likedSet = new Set((likesRes.data ?? []).map((l) => l.site_id));
     const commentCounts = new Map<string, number>();
@@ -300,12 +302,14 @@ export const addSiteLink = createServerFn({ method: "POST" })
         image_url: preview.image || fallback,
         link_url: url,
         sort_order: nextOrder,
+        screenshot_status: "pending",
       })
       .select()
       .single();
     if (error) throw new Error(error.message);
     return { site: row };
   });
+
 
 export const updateSite = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string; title?: string | null; linkUrl?: string | null }) =>
