@@ -98,12 +98,6 @@ export function SiteCard({
               <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
             </div>
           )}
-          {isLiquid && (
-            <div className="absolute top-4 left-4 rounded-full px-3 py-1.5 flex items-center gap-1.5 shadow-lg pointer-events-none text-white" style={{ background: "linear-gradient(135deg,#6EE7F9 0%,#A78BFA 50%,#F472B6 100%)" }}>
-              <Sparkles className="size-3.5" />
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] font-semibold">By Liquid</span>
-            </div>
-          )}
           {host && (
             <div className="absolute bottom-4 left-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
               <ExternalLink className="size-3.5" />
