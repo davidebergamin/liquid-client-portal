@@ -171,8 +171,6 @@ function LeadBoardPage() {
                 <p className="font-display text-3xl">Board vuota</p>
               </div>
             ) : (() => {
-              const linkSites = data.sites.filter((s) => s.link_url);
-              const screenshotSites = data.sites.filter((s) => !s.link_url);
               const renderCard = (s: typeof data.sites[number]) => (
                 <SiteCard
                   key={s.id}
@@ -183,6 +181,7 @@ function LeadBoardPage() {
                   liked={s.liked}
                   commentsCount={s.comments}
                   linkUrl={s.link_url}
+                  status={(s as { screenshot_status?: string }).screenshot_status ?? "ready"}
                   busy={false}
                   onToggleLike={() => likeMut.mutate(s.id)}
                   onSubmitComment={async (body) => {
@@ -202,50 +201,16 @@ function LeadBoardPage() {
                       qc.invalidateQueries({ queryKey: ["board", slug] });
                     }
                   }}
-                  onZoom={() => setZoomed(s.id)}
+                  onOpen={() => setDetailId(s.id)}
                 />
               );
               return (
-                <div className="space-y-20">
-                  <section>
-                    <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-border">
-                      <div>
-                        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
-                          [ A ] — Siti di riferimento
-                        </p>
-                        <h2 className="font-display text-4xl md:text-5xl">Siti completi</h2>
-                      </div>
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                        {linkSites.length} {linkSites.length === 1 ? "sito" : "siti"}
-                      </span>
-                    </div>
-                    {linkSites.length > 0 ? (
-                      <div className="masonry">{linkSites.map(renderCard)}</div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic py-8">Nessun sito di riferimento.</p>
-                    )}
-                  </section>
-                  <section>
-                    <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-border">
-                      <div>
-                        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
-                          [ B ] — Dettagli &amp; ispirazioni
-                        </p>
-                        <h2 className="font-display text-4xl md:text-5xl">Screenshot &amp; immagini</h2>
-                      </div>
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                        {screenshotSites.length} {screenshotSites.length === 1 ? "immagine" : "immagini"}
-                      </span>
-                    </div>
-                    {screenshotSites.length > 0 ? (
-                      <div className="masonry">{screenshotSites.map(renderCard)}</div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic py-8">Nessuno screenshot in questa board.</p>
-                    )}
-                  </section>
+                <div className="space-y-10 md:space-y-16">
+                  {data.sites.map(renderCard)}
                 </div>
               );
             })()}
+
           </main>
         </>
       ) : (
