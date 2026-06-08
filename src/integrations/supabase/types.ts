@@ -168,6 +168,7 @@ export type Database = {
           height: number | null
           id: string
           image_url: string
+          is_liquid: boolean
           link_url: string | null
           screenshot_status: string
           sort_order: number
@@ -180,6 +181,7 @@ export type Database = {
           height?: number | null
           id?: string
           image_url: string
+          is_liquid?: boolean
           link_url?: string | null
           screenshot_status?: string
           sort_order?: number
@@ -192,6 +194,7 @@ export type Database = {
           height?: number | null
           id?: string
           image_url?: string
+          is_liquid?: boolean
           link_url?: string | null
           screenshot_status?: string
           sort_order?: number
