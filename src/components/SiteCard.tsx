@@ -49,6 +49,7 @@ export function SiteCard({
 
   const host = linkUrl ? new URL(linkUrl).hostname.replace(/^www\./, "") : null;
   const pending = status === "pending";
+  const failed = status === "failed";
 
   return (
     <article className="group w-full overflow-hidden rounded-2xl bg-card border border-border transition-all duration-300 hover:border-foreground/40 hover:shadow-2xl">
@@ -65,17 +66,17 @@ export function SiteCard({
           {(!loaded || pending) && (
             <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted/60 via-muted/30 to-muted/60" />
           )}
-          {pending && (
+          {(pending || failed) && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center">
-                <Loader2 className="size-7 animate-spin mx-auto text-muted-foreground" />
+                {pending ? <Loader2 className="size-7 animate-spin mx-auto text-muted-foreground" /> : <ExternalLink className="size-7 mx-auto text-muted-foreground" />}
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-3">
-                  Cattura screenshot...
+                  {pending ? "Cattura screenshot..." : "Screenshot non disponibile"}
                 </p>
               </div>
             </div>
           )}
-          {!pending && (
+          {!pending && !failed && (
             <img
               src={imageUrl}
               alt={title ?? "Sito di riferimento"}
