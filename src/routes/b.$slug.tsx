@@ -172,9 +172,11 @@ function LeadBoardPage() {
             <h1 className="font-display text-5xl md:text-7xl lg:text-[88px] leading-[0.95] mt-3 max-w-5xl">
               {data?.lead ? `Ciao ${data.lead.name}, scegli il tuo stile.` : "Scegli lo stile del tuo nuovo sito."}
             </h1>
-            <p className="text-muted-foreground mt-6 max-w-xl text-base md:text-lg leading-relaxed">
-              Naviga la selezione, metti like a quelli che ti rappresentano e lascia un commento
-              su cosa ti colpisce. Userò le tue scelte per disegnare il tuo brand.
+            <p className="text-muted-foreground mt-6 max-w-2xl text-base md:text-lg leading-relaxed">
+              Qui sotto trovi una selezione di siti e ispirazioni. Guardali, metti like a quelli
+              che ti piacciono e lascia un commento su cosa ti colpisce. Userò le tue scelte
+              come base per progettare un sito su misura per te, ispirato — non copiato — a
+              quelli che ti hanno convinto di più.
             </p>
           </section>
 
@@ -222,9 +224,53 @@ function LeadBoardPage() {
                   onOpen={() => setDetailId(s.id)}
                 />
               );
+
+              const liquidSites = data.sites.filter((s: any) => s.is_liquid);
+              const photographerSites = data.sites.filter((s: any) => !s.is_liquid && s.link_url);
+              const imageSites = data.sites.filter((s: any) => !s.is_liquid && !s.link_url);
+
+              const Section = ({
+                num, title, description, items,
+              }: { num: string; title: string; description: string; items: typeof data.sites }) => {
+                if (!items.length) return null;
+                return (
+                  <div className="space-y-8 md:space-y-10">
+                    <header className="border-t border-border pt-8">
+                      <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+                        [ {num} ] — {items.length} {items.length === 1 ? "elemento" : "elementi"}
+                      </p>
+                      <h2 className="font-display text-3xl md:text-5xl mt-2">{title}</h2>
+                      <p className="text-muted-foreground mt-3 max-w-2xl text-sm md:text-base leading-relaxed">
+                        {description}
+                      </p>
+                    </header>
+                    <div className="space-y-10 md:space-y-16">
+                      {items.map(renderCard)}
+                    </div>
+                  </div>
+                );
+              };
+
               return (
-                <div className="space-y-10 md:space-y-16">
-                  {data.sites.map(renderCard)}
+                <div className="space-y-16 md:space-y-24">
+                  <Section
+                    num="A"
+                    title="Siti con design unico — by Liquid"
+                    description="Progetti realizzati da me: ogni sito è disegnato su misura, senza template. Guarda la direzione che potrei prendere per il tuo."
+                    items={liquidSites}
+                  />
+                  <Section
+                    num="B"
+                    title="Siti di fotografi"
+                    description="Una selezione di portfolio di altri fotografi: tipografia, ritmo, atmosfera. Dimmi quali ti convincono di più e quali no."
+                    items={photographerSites}
+                  />
+                  <Section
+                    num="C"
+                    title="Immagini e screenshot"
+                    description="Suggestioni visive — palette, layout, dettagli — che possono ispirare il mood del tuo sito."
+                    items={imageSites}
+                  />
                 </div>
               );
             })()}
