@@ -115,8 +115,25 @@ function LeadBoardPage() {
   ];
   const detail = allEntries.find((s) => s.id === detailId) ?? null;
 
+  // Auto-trigger capture for any pending sites visible (backfill + recovery)
+  useEffect(() => {
+    const pendingSites = (data?.sites ?? []).filter(
+      (s) => (s as { screenshot_status?: string }).screenshot_status === "pending" && s.link_url
+    );
+    const pendingLead = (uploads?.leadSites ?? []).filter(
+      (s) => (s as { screenshot_status?: string }).screenshot_status === "pending" && s.link_url
+    );
+    pendingSites.forEach((s) => {
+      fetch(`/api/public/capture/sites/${s.id}`, { method: "POST" }).catch(() => {});
+    });
+    pendingLead.forEach((s) => {
+      fetch(`/api/public/capture/lead_sites/${s.id}`, { method: "POST" }).catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.sites.map((s) => s.id).join(","), uploads?.leadSites.map((s) => s.id).join(",")]);
 
   const [tab, setTab] = useState<"board" | "mine">("board");
+
 
   return (
     <div className="min-h-screen bg-background">
