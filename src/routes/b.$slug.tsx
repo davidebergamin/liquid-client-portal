@@ -245,7 +245,7 @@ function LeadBoardPage() {
                 <LeadUploadCard
                   key={s.id}
                   site={s}
-                  onZoom={() => s.image_url && setZoomed(s.id)}
+                  onZoom={() => (s.image_url || s.link_url) && setDetailId(s.id)}
                   onDelete={async () => {
                     await delLeadSiteFn({ data: { slug, id: s.id } });
                     invalidateUploads();
@@ -265,29 +265,65 @@ function LeadBoardPage() {
         </section>
       )}
 
-      {zoomedSite && (
+      {detail && (
         <div
-          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-4 md:p-10 cursor-zoom-out animate-in fade-in"
-          onClick={() => setZoomed(null)}
+          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md animate-in fade-in"
+          onClick={() => setDetailId(null)}
         >
-          <button
-            onClick={() => setZoomed(null)}
-            className="absolute top-4 right-4 rounded-full bg-card border border-border p-2 hover:bg-accent transition"
-            aria-label="Chiudi"
-          >
-            <X className="size-5" />
-          </button>
-          <img
-            src={zoomedSite.url}
-            alt={zoomedSite.title ?? "Sito"}
-            className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl"
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            {detail.link_url && (
+              <a
+                href={detail.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-full bg-foreground text-background px-4 py-2 text-sm font-medium inline-flex items-center gap-2 hover:opacity-90 transition shadow-lg"
+              >
+                <ExternalLink className="size-4" /> Visita sito
+              </a>
+            )}
+            <button
+              onClick={() => setDetailId(null)}
+              className="rounded-full bg-card border border-border p-2 hover:bg-accent transition"
+              aria-label="Chiudi"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+          <div
+            className="h-full w-full overflow-y-auto overflow-x-hidden flex justify-center py-16 px-4 md:px-10"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <div className="w-full max-w-5xl">
+              {detail.status === "pending" ? (
+                <div className="aspect-[4/3] flex items-center justify-center bg-muted/30 rounded-xl border border-border">
+                  <div className="text-center">
+                    <Loader2 className="size-8 animate-spin mx-auto text-muted-foreground" />
+                    <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mt-4">
+                      Sto catturando lo screenshot...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={detail.full_image_url || detail.image_url}
+                  alt={detail.title ?? "Sito"}
+                  className="w-full h-auto block rounded-xl shadow-2xl"
+                />
+              )}
+              {detail.title && (
+                <p className="text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground mt-4">
+                  {detail.title}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
 
 function LeadUploader({
   slug,
