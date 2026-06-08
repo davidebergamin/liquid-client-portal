@@ -92,6 +92,8 @@ type AdminSite = {
   id: string;
   title: string | null;
   image_url: string;
+  full_image_url: string | null;
+  screenshot_status: string | null;
   link_url: string | null;
   width: number | null;
   height: number | null;
@@ -195,6 +197,28 @@ function BoardTab() {
   });
 
 
+  // Auto-trigger screenshot capture for any link-site still pending
+  useEffect(() => {
+    const pending = (data?.sites ?? []).filter(
+      (s) => s.screenshot_status === "pending" && s.link_url
+    );
+    if (!pending.length) return;
+    pending.forEach((s) => {
+      fetch(`/api/public/capture/sites/${s.id}`, { method: "POST" })
+        .then(() => qc.invalidateQueries({ queryKey: ["admin-sites"] }))
+        .catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.sites.filter((s) => s.screenshot_status === "pending").map((s) => s.id).join(",")]);
+
+  // Poll while any site is pending
+  useEffect(() => {
+    const hasPending = (data?.sites ?? []).some((s) => s.screenshot_status === "pending");
+    if (!hasPending) return;
+    const t = setInterval(() => qc.invalidateQueries({ queryKey: ["admin-sites"] }), 4000);
+    return () => clearInterval(t);
+  }, [data?.sites, qc]);
+
   useEffect(() => {
     const isEditable = (el: EventTarget | null) => {
       if (!(el instanceof HTMLElement)) return false;
@@ -295,7 +319,8 @@ function BoardTab() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sites.map((s) => s.id)} strategy={rectSortingStrategy}>
-              <div className="masonry">
+              <div className="space-y-10 md:space-y-16">
+
                 {sites.map((s, i) => (
                   <SortableSiteCard
                     key={s.id}
@@ -330,64 +355,78 @@ function SortableSiteCard({
     opacity: isDragging ? 0.6 : 1,
   };
 
-  const imgEl = (
+  const pending = site.screenshot_status === "pending";
+  const host = site.link_url ? (() => { try { return new URL(site.link_url!).hostname.replace(/^www\./, ""); } catch { return null; } })() : null;
+
+  const mediaInner = pending ? (
+    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-muted/60 via-muted/30 to-muted/60 animate-pulse">
+      <div className="text-center">
+        <Loader2 className="size-7 animate-spin mx-auto text-muted-foreground" />
+        <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-3">
+          Cattura screenshot...
+        </p>
+      </div>
+    </div>
+  ) : (
     <img
       src={site.image_url}
       alt={site.title ?? ""}
-      className="w-full h-auto block pointer-events-none select-none"
+      className="absolute inset-0 w-full h-full object-cover object-top block pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-[1.02]"
       loading="lazy"
       draggable={false}
     />
   );
 
   return (
-    <div
+    <article
       ref={setNodeRef}
       style={style}
-      className="group relative rounded-xl overflow-hidden border border-border bg-card"
+      className="group relative w-full rounded-2xl overflow-hidden border border-border bg-card transition-shadow duration-300 hover:shadow-2xl"
     >
       <button
         type="button"
         {...attributes}
         {...listeners}
-        className="absolute top-2 left-2 z-10 rounded-md bg-background/90 backdrop-blur p-1.5 shadow cursor-grab active:cursor-grabbing hover:bg-background"
+        className="absolute top-4 left-4 z-10 rounded-full bg-background/90 backdrop-blur p-2 shadow cursor-grab active:cursor-grabbing hover:bg-background"
         aria-label="Trascina per riordinare"
       >
-        <GripVertical className="size-3.5" />
+        <GripVertical className="size-4" />
       </button>
-      {site.link_url ? (
-        <a
-          href={site.link_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block relative"
-          title={site.link_url}
-        >
-          {imgEl}
-          <span className="absolute top-2 right-2 z-10 rounded-md bg-background/90 backdrop-blur px-2 py-1 shadow text-[10px] font-mono uppercase tracking-wider inline-flex items-center gap-1">
-            <ExternalLink className="size-3" /> Link
-          </span>
-        </a>
-      ) : (
-        imgEl
-      )}
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground truncate">
-          #{index + 1} · {site.title || "Sito"}
-        </span>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
-          <span className="inline-flex items-center gap-1"><Heart className="size-3.5" /> {site.likes}</span>
-          <span className="inline-flex items-center gap-1"><MessageCircle className="size-3.5" /> {site.comments}</span>
+
+      <div className="relative w-full bg-muted/40 overflow-hidden" style={{ aspectRatio: "16 / 10" }}>
+        {site.link_url && !pending ? (
+          <a href={site.link_url} target="_blank" rel="noopener noreferrer" className="block absolute inset-0" title={site.link_url}>
+            {mediaInner}
+          </a>
+        ) : (
+          mediaInner
+        )}
+        {host && (
+          <div className="absolute bottom-4 left-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
+            <ExternalLink className="size-3.5" />
+            <span className="text-[11px] font-mono uppercase tracking-wider">{host}</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3 px-5 py-4">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">#{index + 1}</p>
+          <h3 className="font-display text-2xl md:text-3xl truncate mt-0.5">{site.title || host || "Sito"}</h3>
+        </div>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground shrink-0">
+          <span className="inline-flex items-center gap-1"><Heart className="size-4" /> {site.likes}</span>
+          <span className="inline-flex items-center gap-1"><MessageCircle className="size-4" /> {site.comments}</span>
           <button
             onClick={onDelete}
             className="text-destructive hover:text-destructive/80 transition"
             aria-label="Elimina"
           >
-            <Trash2 className="size-3.5" />
+            <Trash2 className="size-4" />
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
