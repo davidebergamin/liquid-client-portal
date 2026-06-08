@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BSlugRouteImport } from './routes/b.$slug'
+import { Route as ApiPublicCaptureKindIdRouteImport } from './routes/api/public/capture.$kind.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,31 +23,40 @@ const BSlugRoute = BSlugRouteImport.update({
   path: '/b/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCaptureKindIdRoute = ApiPublicCaptureKindIdRouteImport.update({
+  id: '/api/public/capture/$kind/$id',
+  path: '/api/public/capture/$kind/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/b/$slug': typeof BSlugRoute
+  '/api/public/capture/$kind/$id': typeof ApiPublicCaptureKindIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/b/$slug': typeof BSlugRoute
+  '/api/public/capture/$kind/$id': typeof ApiPublicCaptureKindIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/b/$slug': typeof BSlugRoute
+  '/api/public/capture/$kind/$id': typeof ApiPublicCaptureKindIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/b/$slug'
+  fullPaths: '/' | '/b/$slug' | '/api/public/capture/$kind/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/b/$slug'
-  id: '__root__' | '/' | '/b/$slug'
+  to: '/' | '/b/$slug' | '/api/public/capture/$kind/$id'
+  id: '__root__' | '/' | '/b/$slug' | '/api/public/capture/$kind/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BSlugRoute: typeof BSlugRoute
+  ApiPublicCaptureKindIdRoute: typeof ApiPublicCaptureKindIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,13 +75,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/capture/$kind/$id': {
+      id: '/api/public/capture/$kind/$id'
+      path: '/api/public/capture/$kind/$id'
+      fullPath: '/api/public/capture/$kind/$id'
+      preLoaderRoute: typeof ApiPublicCaptureKindIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BSlugRoute: BSlugRoute,
+  ApiPublicCaptureKindIdRoute: ApiPublicCaptureKindIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
