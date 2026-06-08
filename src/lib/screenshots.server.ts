@@ -63,7 +63,13 @@ export async function captureAndStore(opts: {
       full ? uploadBytes(full, `screens/full`) : Promise.resolve(null as string | null),
     ]);
 
-    const patch: Record<string, unknown> = { screenshot_status: "ready" };
+    const patch: {
+      screenshot_status: string;
+      image_url?: string;
+      width?: number;
+      height?: number;
+      full_image_url?: string;
+    } = { screenshot_status: "ready" };
     if (heroUrl) {
       patch.image_url = heroUrl;
       patch.width = 1600;
@@ -72,6 +78,7 @@ export async function captureAndStore(opts: {
     if (fullUrl) patch.full_image_url = fullUrl;
 
     await supabaseAdmin.from(table).update(patch).eq("id", id);
+
     return { ok: true };
   } catch (e) {
     await supabaseAdmin.from(table).update({ screenshot_status: "failed" }).eq("id", id);
