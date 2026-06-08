@@ -31,7 +31,7 @@ export const getBoard = createServerFn({ method: "GET" })
 
     const { data: sites, error } = await supabaseAdmin
       .from("sites")
-      .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,sort_order,created_at")
+      .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,sort_order,created_at,is_liquid")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
 
