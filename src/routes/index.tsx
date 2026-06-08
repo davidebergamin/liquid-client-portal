@@ -319,7 +319,8 @@ function BoardTab() {
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sites.map((s) => s.id)} strategy={rectSortingStrategy}>
-              <div className="masonry">
+              <div className="space-y-10 md:space-y-16">
+
                 {sites.map((s, i) => (
                   <SortableSiteCard
                     key={s.id}
