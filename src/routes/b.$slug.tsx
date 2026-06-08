@@ -233,10 +233,17 @@ function LeadBoardPage() {
               toast.success("Aggiunto");
             }}
             onAddLink={async (payload) => {
-              await addLeadSiteFn({ data: { slug, ...payload } });
+              const res = await addLeadSiteFn({ data: { slug, ...payload } });
               invalidateUploads();
-              toast.success("Link aggiunto");
+              toast.success("Link aggiunto — sto generando lo screenshot");
+              const id = res?.leadSite?.id;
+              if (id) {
+                fetch(`/api/public/capture/lead_sites/${id}`, { method: "POST" })
+                  .then(() => invalidateUploads())
+                  .catch(() => {});
+              }
             }}
+
           />
 
           {uploads?.leadSites && uploads.leadSites.length > 0 ? (
