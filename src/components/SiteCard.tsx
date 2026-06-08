@@ -27,6 +27,7 @@ export function SiteCard({
   busy,
   linkUrl,
   status = "ready",
+  isLiquid = false,
   onToggleLike,
   onSubmitComment,
   onOpen,
