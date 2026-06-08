@@ -62,31 +62,37 @@ export type Database = {
       lead_sites: {
         Row: {
           created_at: string
+          full_image_url: string | null
           height: number | null
           id: string
           image_url: string | null
           lead_id: string
           link_url: string | null
+          screenshot_status: string
           title: string | null
           width: number | null
         }
         Insert: {
           created_at?: string
+          full_image_url?: string | null
           height?: number | null
           id?: string
           image_url?: string | null
           lead_id: string
           link_url?: string | null
+          screenshot_status?: string
           title?: string | null
           width?: number | null
         }
         Update: {
           created_at?: string
+          full_image_url?: string | null
           height?: number | null
           id?: string
           image_url?: string | null
           lead_id?: string
           link_url?: string | null
+          screenshot_status?: string
           title?: string | null
           width?: number | null
         }
@@ -158,30 +164,36 @@ export type Database = {
       sites: {
         Row: {
           created_at: string
+          full_image_url: string | null
           height: number | null
           id: string
           image_url: string
           link_url: string | null
+          screenshot_status: string
           sort_order: number
           title: string | null
           width: number | null
         }
         Insert: {
           created_at?: string
+          full_image_url?: string | null
           height?: number | null
           id?: string
           image_url: string
           link_url?: string | null
+          screenshot_status?: string
           sort_order?: number
           title?: string | null
           width?: number | null
         }
         Update: {
           created_at?: string
+          full_image_url?: string | null
           height?: number | null
           id?: string
           image_url?: string
           link_url?: string | null
+          screenshot_status?: string
           sort_order?: number
           title?: string | null
           width?: number | null
