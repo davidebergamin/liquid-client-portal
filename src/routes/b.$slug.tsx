@@ -45,14 +45,22 @@ function LeadBoardPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["board", slug],
     queryFn: () => fetchBoard({ data: { slug } }),
+    refetchInterval: (q) => {
+      const d = q.state.data as { sites?: { screenshot_status?: string }[] } | undefined;
+      return d?.sites?.some((s) => s.screenshot_status === "pending") ? 4000 : false;
+    },
   });
 
   const { data: uploads } = useQuery({
     queryKey: ["lead-uploads", slug],
     queryFn: () => fetchUploads({ data: { slug } }),
+    refetchInterval: (q) => {
+      const d = q.state.data as { leadSites?: { screenshot_status?: string }[] } | undefined;
+      return d?.leadSites?.some((s) => s.screenshot_status === "pending") ? 4000 : false;
+    },
   });
 
-  const [zoomed, setZoomed] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const likeMut = useMutation({
     mutationFn: (siteId: string) => likeFn({ data: { slug, siteId } }),
@@ -81,13 +89,51 @@ function LeadBoardPage() {
 
   if (error) throw error;
 
-  const allImages = [
-    ...(data?.sites ?? []).map((s) => ({ id: s.id, url: s.image_url, title: s.title })),
-    ...(uploads?.leadSites.filter((s) => s.image_url).map((s) => ({ id: s.id, url: s.image_url!, title: s.title })) ?? []),
+  type DetailEntry = {
+    id: string;
+    title: string | null;
+    image_url: string;
+    full_image_url: string | null;
+    link_url: string | null;
+    status: string;
+  };
+  const allEntries: DetailEntry[] = [
+    ...(data?.sites ?? []).map((s) => ({
+      id: s.id, title: s.title, image_url: s.image_url,
+      full_image_url: (s as { full_image_url?: string | null }).full_image_url ?? null,
+      link_url: s.link_url,
+      status: (s as { screenshot_status?: string }).screenshot_status ?? "ready",
+    })),
+    ...(uploads?.leadSites
+      .filter((s) => s.image_url || s.link_url)
+      .map((s) => ({
+        id: s.id, title: s.title, image_url: s.image_url || "",
+        full_image_url: (s as { full_image_url?: string | null }).full_image_url ?? null,
+        link_url: s.link_url,
+        status: (s as { screenshot_status?: string }).screenshot_status ?? "ready",
+      })) ?? []),
   ];
-  const zoomedSite = allImages.find((s) => s.id === zoomed) ?? null;
+  const detail = allEntries.find((s) => s.id === detailId) ?? null;
+
+  // Auto-trigger capture for any pending sites visible (backfill + recovery)
+  useEffect(() => {
+    const pendingSites = (data?.sites ?? []).filter(
+      (s) => (s as { screenshot_status?: string }).screenshot_status === "pending" && s.link_url
+    );
+    const pendingLead = (uploads?.leadSites ?? []).filter(
+      (s) => (s as { screenshot_status?: string }).screenshot_status === "pending" && s.link_url
+    );
+    pendingSites.forEach((s) => {
+      fetch(`/api/public/capture/sites/${s.id}`, { method: "POST" }).catch(() => {});
+    });
+    pendingLead.forEach((s) => {
+      fetch(`/api/public/capture/lead_sites/${s.id}`, { method: "POST" }).catch(() => {});
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.sites.map((s) => s.id).join(","), uploads?.leadSites.map((s) => s.id).join(",")]);
 
   const [tab, setTab] = useState<"board" | "mine">("board");
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -142,8 +188,6 @@ function LeadBoardPage() {
                 <p className="font-display text-3xl">Board vuota</p>
               </div>
             ) : (() => {
-              const linkSites = data.sites.filter((s) => s.link_url);
-              const screenshotSites = data.sites.filter((s) => !s.link_url);
               const renderCard = (s: typeof data.sites[number]) => (
                 <SiteCard
                   key={s.id}
@@ -154,6 +198,7 @@ function LeadBoardPage() {
                   liked={s.liked}
                   commentsCount={s.comments}
                   linkUrl={s.link_url}
+                  status={(s as { screenshot_status?: string }).screenshot_status ?? "ready"}
                   busy={false}
                   onToggleLike={() => likeMut.mutate(s.id)}
                   onSubmitComment={async (body) => {
@@ -173,50 +218,16 @@ function LeadBoardPage() {
                       qc.invalidateQueries({ queryKey: ["board", slug] });
                     }
                   }}
-                  onZoom={() => setZoomed(s.id)}
+                  onOpen={() => setDetailId(s.id)}
                 />
               );
               return (
-                <div className="space-y-20">
-                  <section>
-                    <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-border">
-                      <div>
-                        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
-                          [ A ] — Siti di riferimento
-                        </p>
-                        <h2 className="font-display text-4xl md:text-5xl">Siti completi</h2>
-                      </div>
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                        {linkSites.length} {linkSites.length === 1 ? "sito" : "siti"}
-                      </span>
-                    </div>
-                    {linkSites.length > 0 ? (
-                      <div className="masonry">{linkSites.map(renderCard)}</div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic py-8">Nessun sito di riferimento.</p>
-                    )}
-                  </section>
-                  <section>
-                    <div className="flex items-baseline justify-between mb-8 pb-4 border-b border-border">
-                      <div>
-                        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-2">
-                          [ B ] — Dettagli &amp; ispirazioni
-                        </p>
-                        <h2 className="font-display text-4xl md:text-5xl">Screenshot &amp; immagini</h2>
-                      </div>
-                      <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                        {screenshotSites.length} {screenshotSites.length === 1 ? "immagine" : "immagini"}
-                      </span>
-                    </div>
-                    {screenshotSites.length > 0 ? (
-                      <div className="masonry">{screenshotSites.map(renderCard)}</div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground italic py-8">Nessuno screenshot in questa board.</p>
-                    )}
-                  </section>
+                <div className="space-y-10 md:space-y-16">
+                  {data.sites.map(renderCard)}
                 </div>
               );
             })()}
+
           </main>
         </>
       ) : (
@@ -239,10 +250,17 @@ function LeadBoardPage() {
               toast.success("Aggiunto");
             }}
             onAddLink={async (payload) => {
-              await addLeadSiteFn({ data: { slug, ...payload } });
+              const res = await addLeadSiteFn({ data: { slug, ...payload } });
               invalidateUploads();
-              toast.success("Link aggiunto");
+              toast.success("Link aggiunto — sto generando lo screenshot");
+              const id = res?.leadSite?.id;
+              if (id) {
+                fetch(`/api/public/capture/lead_sites/${id}`, { method: "POST" })
+                  .then(() => invalidateUploads())
+                  .catch(() => {});
+              }
             }}
+
           />
 
           {uploads?.leadSites && uploads.leadSites.length > 0 ? (
@@ -251,7 +269,7 @@ function LeadBoardPage() {
                 <LeadUploadCard
                   key={s.id}
                   site={s}
-                  onZoom={() => s.image_url && setZoomed(s.id)}
+                  onZoom={() => (s.image_url || s.link_url) && setDetailId(s.id)}
                   onDelete={async () => {
                     await delLeadSiteFn({ data: { slug, id: s.id } });
                     invalidateUploads();
@@ -271,29 +289,65 @@ function LeadBoardPage() {
         </section>
       )}
 
-      {zoomedSite && (
+      {detail && (
         <div
-          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md flex items-center justify-center p-4 md:p-10 cursor-zoom-out animate-in fade-in"
-          onClick={() => setZoomed(null)}
+          className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md animate-in fade-in"
+          onClick={() => setDetailId(null)}
         >
-          <button
-            onClick={() => setZoomed(null)}
-            className="absolute top-4 right-4 rounded-full bg-card border border-border p-2 hover:bg-accent transition"
-            aria-label="Chiudi"
-          >
-            <X className="size-5" />
-          </button>
-          <img
-            src={zoomedSite.url}
-            alt={zoomedSite.title ?? "Sito"}
-            className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg shadow-2xl"
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
+            {detail.link_url && (
+              <a
+                href={detail.link_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="rounded-full bg-foreground text-background px-4 py-2 text-sm font-medium inline-flex items-center gap-2 hover:opacity-90 transition shadow-lg"
+              >
+                <ExternalLink className="size-4" /> Visita sito
+              </a>
+            )}
+            <button
+              onClick={() => setDetailId(null)}
+              className="rounded-full bg-card border border-border p-2 hover:bg-accent transition"
+              aria-label="Chiudi"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+          <div
+            className="h-full w-full overflow-y-auto overflow-x-hidden flex justify-center py-16 px-4 md:px-10"
             onClick={(e) => e.stopPropagation()}
-          />
+          >
+            <div className="w-full max-w-5xl">
+              {detail.status === "pending" ? (
+                <div className="aspect-[4/3] flex items-center justify-center bg-muted/30 rounded-xl border border-border">
+                  <div className="text-center">
+                    <Loader2 className="size-8 animate-spin mx-auto text-muted-foreground" />
+                    <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mt-4">
+                      Sto catturando lo screenshot...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <img
+                  src={detail.full_image_url || detail.image_url}
+                  alt={detail.title ?? "Sito"}
+                  className="w-full h-auto block rounded-xl shadow-2xl"
+                />
+              )}
+              {detail.title && (
+                <p className="text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground mt-4">
+                  {detail.title}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
+
 
 function LeadUploader({
   slug,

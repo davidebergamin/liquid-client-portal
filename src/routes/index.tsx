@@ -180,13 +180,20 @@ function BoardTab() {
 
   const linkMut = useMutation({
     mutationFn: (url: string) => addLink({ data: { url } }),
-    onSuccess: () => {
-      toast.success("Link aggiunto come card");
+    onSuccess: (res) => {
+      toast.success("Link aggiunto — sto generando lo screenshot");
       setOrder(null);
       qc.invalidateQueries({ queryKey: ["admin-sites"] });
+      const id = res?.site?.id;
+      if (id) {
+        fetch(`/api/public/capture/sites/${id}`, { method: "POST" })
+          .then(() => qc.invalidateQueries({ queryKey: ["admin-sites"] }))
+          .catch(() => {});
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   useEffect(() => {
     const isEditable = (el: EventTarget | null) => {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, X, ExternalLink } from "lucide-react";
+import { Heart, MessageCircle, Send, X, ExternalLink, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -12,23 +12,23 @@ type Props = {
   commentsCount: number;
   busy?: boolean;
   linkUrl?: string | null;
+  status?: string;
   onToggleLike: () => void;
   onSubmitComment: (body: string) => Promise<void> | void;
-  onZoom: () => void;
+  onOpen: () => void;
 };
 
 export function SiteCard({
   title,
   imageUrl,
-  width,
-  height,
   liked,
   commentsCount,
   busy,
   linkUrl,
+  status = "ready",
   onToggleLike,
   onSubmitComment,
-  onZoom,
+  onOpen,
 }: Props) {
   const [composing, setComposing] = useState(false);
   const [body, setBody] = useState("");
@@ -47,67 +47,77 @@ export function SiteCard({
     }
   };
 
-  const ratio = width && height ? `${width} / ${height}` : "4 / 3";
-
-  const imgInner = (
-    <>
-      <div
-        className="w-full bg-muted/40 relative overflow-hidden"
-        style={{ aspectRatio: ratio }}
-      >
-        {!loaded && (
-          <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted/60 via-muted/30 to-muted/60" />
-        )}
-        <img
-          src={imageUrl}
-          alt={title ?? "Sito di riferimento"}
-          width={width ?? undefined}
-          height={height ?? undefined}
-          loading="lazy"
-          decoding="async"
-          onLoad={() => setLoaded(true)}
-          className={`absolute inset-0 w-full h-full object-cover block transition-opacity duration-700 ease-out ${
-            loaded ? "opacity-100" : "opacity-0"
-          }`}
-          draggable={false}
-        />
-      </div>
-      {liked && (
-        <div className="absolute top-3 right-3 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 flex items-center gap-1.5 shadow-sm pointer-events-none">
-          <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
-          <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
-        </div>
-      )}
-      {linkUrl && (
-        <div className="absolute top-3 left-3 rounded-full bg-background/90 backdrop-blur px-2.5 py-1 flex items-center gap-1.5 shadow-sm pointer-events-none">
-          <ExternalLink className="size-3.5" />
-          <span className="text-[10px] font-mono uppercase tracking-wider">Visita</span>
-        </div>
-      )}
-    </>
-  );
+  const host = linkUrl ? new URL(linkUrl).hostname.replace(/^www\./, "") : null;
+  const pending = status === "pending";
 
   return (
-    <div className="group block w-full overflow-hidden rounded-xl bg-card border border-border transition-all duration-300 hover:border-foreground/40">
-      {linkUrl ? (
-        <a
-          href={linkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block w-full relative"
-          aria-label="Visita il sito"
+    <article className="group w-full overflow-hidden rounded-2xl bg-card border border-border transition-all duration-300 hover:border-foreground/40 hover:shadow-2xl">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block w-full relative cursor-pointer"
+        aria-label="Apri dettaglio"
+      >
+        <div
+          className="w-full bg-muted/40 relative overflow-hidden"
+          style={{ aspectRatio: "16 / 10" }}
         >
-          {imgInner}
-        </a>
-      ) : (
-        <button
-          type="button"
-          onClick={onZoom}
-          className="block w-full relative cursor-zoom-in"
-          aria-label="Ingrandisci immagine"
-        >
-          {imgInner}
-        </button>
+          {(!loaded || pending) && (
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted/60 via-muted/30 to-muted/60" />
+          )}
+          {pending && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <Loader2 className="size-7 animate-spin mx-auto text-muted-foreground" />
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-3">
+                  Cattura screenshot...
+                </p>
+              </div>
+            </div>
+          )}
+          {!pending && (
+            <img
+              src={imageUrl}
+              alt={title ?? "Sito di riferimento"}
+              loading="lazy"
+              decoding="async"
+              onLoad={() => setLoaded(true)}
+              className={`absolute inset-0 w-full h-full object-cover object-top block transition-opacity duration-700 ease-out group-hover:scale-[1.02] transform-gpu transition-transform ${
+                loaded ? "opacity-100" : "opacity-0"
+              }`}
+              draggable={false}
+            />
+          )}
+          {liked && (
+            <div className="absolute top-4 right-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
+              <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
+              <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
+            </div>
+          )}
+          {host && (
+            <div className="absolute bottom-4 left-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
+              <ExternalLink className="size-3.5" />
+              <span className="text-[11px] font-mono uppercase tracking-wider">{host}</span>
+            </div>
+          )}
+        </div>
+      </button>
+
+      {(title || host) && (
+        <div className="px-5 pt-4 pb-1 flex items-baseline justify-between gap-4">
+          <h3 className="font-display text-2xl md:text-3xl truncate">{title || host}</h3>
+          {linkUrl && (
+            <a
+              href={linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground inline-flex items-center gap-1 shrink-0"
+            >
+              Visita <ExternalLink className="size-3" />
+            </a>
+          )}
+        </div>
       )}
 
       <div className="px-3 py-2.5 flex items-center gap-1">
@@ -115,7 +125,7 @@ export function SiteCard({
           type="button"
           onClick={onToggleLike}
           disabled={busy}
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium transition ${
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-2.5 text-sm font-medium transition ${
             liked ? "text-white" : "hover:bg-accent"
           }`}
           style={liked ? { backgroundColor: "var(--like)" } : undefined}
@@ -127,7 +137,7 @@ export function SiteCard({
         <button
           type="button"
           onClick={() => setComposing((v) => !v)}
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-2 text-sm font-medium transition ${
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md py-2.5 text-sm font-medium transition ${
             composing ? "bg-accent" : "hover:bg-accent"
           }`}
         >
@@ -166,6 +176,6 @@ export function SiteCard({
           </div>
         </div>
       )}
-    </div>
+    </article>
   );
 }

@@ -31,9 +31,10 @@ export const getBoard = createServerFn({ method: "GET" })
 
     const { data: sites, error } = await supabaseAdmin
       .from("sites")
-      .select("id,title,image_url,link_url,width,height,sort_order,created_at")
+      .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,sort_order,created_at")
       .order("sort_order", { ascending: true });
     if (error) throw new Error(error.message);
+
 
     const ids = (sites ?? []).map((s) => s.id);
 
@@ -46,10 +47,11 @@ export const getBoard = createServerFn({ method: "GET" })
         : Promise.resolve({ data: [] as { site_id: string | null }[] }),
       supabaseAdmin
         .from("lead_sites")
-        .select("id,title,image_url,link_url,width,height,created_at")
+        .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,created_at")
         .eq("lead_id", lead.id)
         .order("created_at", { ascending: false }),
     ]);
+
 
     const likedSet = new Set((likesRes.data ?? []).map((l) => l.site_id));
     const commentCounts = new Map<string, number>();
@@ -148,8 +150,9 @@ export const deleteOwnComment = createServerFn({ method: "POST" })
 export const adminListSites = createServerFn({ method: "GET" }).handler(async () => {
   const { data: sites } = await supabaseAdmin
     .from("sites")
-    .select("id,title,image_url,link_url,width,height,sort_order,created_at")
+    .select("id,title,image_url,full_image_url,screenshot_status,link_url,width,height,sort_order,created_at")
     .order("sort_order", { ascending: true });
+
 
   const ids = (sites ?? []).map((s) => s.id);
   if (ids.length === 0) return { sites: [] };
@@ -300,12 +303,14 @@ export const addSiteLink = createServerFn({ method: "POST" })
         image_url: preview.image || fallback,
         link_url: url,
         sort_order: nextOrder,
+        screenshot_status: "pending",
       })
       .select()
       .single();
     if (error) throw new Error(error.message);
     return { site: row };
   });
+
 
 export const updateSite = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string; title?: string | null; linkUrl?: string | null }) =>
@@ -530,12 +535,14 @@ export const addLeadSite = createServerFn({ method: "POST" })
         link_url: data.linkUrl || null,
         width,
         height,
+        screenshot_status: data.linkUrl && !imageUrl ? "pending" : "ready",
       })
       .select()
       .single();
     if (error) throw new Error(error.message);
     return { leadSite: row };
   });
+
 
 export const deleteLeadSite = createServerFn({ method: "POST" })
   .inputValidator((d: { slug: string; id: string }) =>
@@ -578,9 +585,10 @@ export const getLeadUploads = createServerFn({ method: "GET" })
     const lead = await getLeadBySlug(data.slug);
     const { data: leadSites } = await supabaseAdmin
       .from("lead_sites")
-      .select("id,title,image_url,link_url,created_at")
+      .select("id,title,image_url,full_image_url,screenshot_status,link_url,created_at")
       .eq("lead_id", lead.id)
       .order("created_at", { ascending: false });
+
 
     const ids = (leadSites ?? []).map((s) => s.id);
     const { data: comments } = ids.length
