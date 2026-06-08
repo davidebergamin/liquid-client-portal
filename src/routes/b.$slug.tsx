@@ -45,14 +45,22 @@ function LeadBoardPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["board", slug],
     queryFn: () => fetchBoard({ data: { slug } }),
+    refetchInterval: (q) => {
+      const d = q.state.data as { sites?: { screenshot_status?: string }[] } | undefined;
+      return d?.sites?.some((s) => s.screenshot_status === "pending") ? 4000 : false;
+    },
   });
 
   const { data: uploads } = useQuery({
     queryKey: ["lead-uploads", slug],
     queryFn: () => fetchUploads({ data: { slug } }),
+    refetchInterval: (q) => {
+      const d = q.state.data as { leadSites?: { screenshot_status?: string }[] } | undefined;
+      return d?.leadSites?.some((s) => s.screenshot_status === "pending") ? 4000 : false;
+    },
   });
 
-  const [zoomed, setZoomed] = useState<string | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const likeMut = useMutation({
     mutationFn: (siteId: string) => likeFn({ data: { slug, siteId } }),
@@ -81,11 +89,32 @@ function LeadBoardPage() {
 
   if (error) throw error;
 
-  const allImages = [
-    ...(data?.sites ?? []).map((s) => ({ id: s.id, url: s.image_url, title: s.title })),
-    ...(uploads?.leadSites.filter((s) => s.image_url).map((s) => ({ id: s.id, url: s.image_url!, title: s.title })) ?? []),
+  type DetailEntry = {
+    id: string;
+    title: string | null;
+    image_url: string;
+    full_image_url: string | null;
+    link_url: string | null;
+    status: string;
+  };
+  const allEntries: DetailEntry[] = [
+    ...(data?.sites ?? []).map((s) => ({
+      id: s.id, title: s.title, image_url: s.image_url,
+      full_image_url: (s as { full_image_url?: string | null }).full_image_url ?? null,
+      link_url: s.link_url,
+      status: (s as { screenshot_status?: string }).screenshot_status ?? "ready",
+    })),
+    ...(uploads?.leadSites
+      .filter((s) => s.image_url || s.link_url)
+      .map((s) => ({
+        id: s.id, title: s.title, image_url: s.image_url || "",
+        full_image_url: (s as { full_image_url?: string | null }).full_image_url ?? null,
+        link_url: s.link_url,
+        status: (s as { screenshot_status?: string }).screenshot_status ?? "ready",
+      })) ?? []),
   ];
-  const zoomedSite = allImages.find((s) => s.id === zoomed) ?? null;
+  const detail = allEntries.find((s) => s.id === detailId) ?? null;
+
 
   const [tab, setTab] = useState<"board" | "mine">("board");
 
