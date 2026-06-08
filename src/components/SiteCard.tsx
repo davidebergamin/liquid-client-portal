@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, X, ExternalLink, Loader2 } from "lucide-react";
+import { Heart, MessageCircle, Send, X, ExternalLink, Loader2, Sparkles } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +13,7 @@ type Props = {
   busy?: boolean;
   linkUrl?: string | null;
   status?: string;
+  isLiquid?: boolean;
   onToggleLike: () => void;
   onSubmitComment: (body: string) => Promise<void> | void;
   onOpen: () => void;
