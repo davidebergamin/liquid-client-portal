@@ -356,14 +356,15 @@ function SortableSiteCard({
   };
 
   const pending = site.screenshot_status === "pending";
+  const failed = site.screenshot_status === "failed";
   const host = site.link_url ? (() => { try { return new URL(site.link_url!).hostname.replace(/^www\./, ""); } catch { return null; } })() : null;
 
-  const mediaInner = pending ? (
+  const mediaInner = pending || failed ? (
     <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-muted/60 via-muted/30 to-muted/60 animate-pulse">
       <div className="text-center">
-        <Loader2 className="size-7 animate-spin mx-auto text-muted-foreground" />
+        {pending ? <Loader2 className="size-7 animate-spin mx-auto text-muted-foreground" /> : <ExternalLink className="size-7 mx-auto text-muted-foreground" />}
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-3">
-          Cattura screenshot...
+          {pending ? "Cattura screenshot..." : "Screenshot non disponibile"}
         </p>
       </div>
     </div>
