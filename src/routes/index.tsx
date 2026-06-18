@@ -427,7 +427,8 @@ function SortableSiteCard({
       src={site.image_url}
       alt={site.title ?? ""}
       className="absolute inset-0 w-full h-full object-cover object-top block pointer-events-none select-none transition-transform duration-500 ease-out group-hover:scale-[1.02]"
-      loading="lazy"
+      loading="eager"
+      decoding="async"
       draggable={false}
     />
   );
