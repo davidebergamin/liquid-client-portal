@@ -83,7 +83,7 @@ export function SiteCard({
             <img
               src={imageUrl}
               alt={title ?? "Sito di riferimento"}
-              loading="lazy"
+              loading="eager"
               decoding="async"
               onLoad={() => setLoaded(true)}
               className={`absolute inset-0 w-full h-full object-cover object-top block transition-opacity duration-700 ease-out group-hover:scale-[1.02] transform-gpu transition-transform ${
