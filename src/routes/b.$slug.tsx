@@ -244,7 +244,7 @@ function LeadBoardPage() {
                         {description}
                       </p>
                     </header>
-                    <div className="space-y-10 md:space-y-16">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                       {items.map(renderCard)}
                     </div>
                   </div>
