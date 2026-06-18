@@ -279,7 +279,7 @@ function BoardTab() {
   const renderGrid = (items: AdminSite[]) => (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={items.map((s) => s.id)} strategy={rectSortingStrategy}>
-        <div className="space-y-10 md:space-y-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {items.map((s) => (
             <SortableSiteCard
               key={s.id}
