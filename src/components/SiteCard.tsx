@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Send, X, ExternalLink, Loader2, Sparkles } from "lucide-react";
+import { Heart, MessageCircle, Send, X, ExternalLink, Loader2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -27,7 +27,6 @@ export function SiteCard({
   busy,
   linkUrl,
   status = "ready",
-  isLiquid = false,
   onToggleLike,
   onSubmitComment,
   onOpen,
@@ -54,7 +53,7 @@ export function SiteCard({
   const failed = status === "failed";
 
   return (
-    <article className="group w-full overflow-hidden rounded-2xl bg-card border border-border transition-all duration-300 hover:border-foreground/40 hover:shadow-2xl">
+    <article className="group w-full overflow-hidden rounded-2xl bg-card border border-border shadow-sm shadow-primary/5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/25 hover:shadow-2xl hover:shadow-primary/10">
 
       <button
         type="button"
@@ -63,7 +62,7 @@ export function SiteCard({
         aria-label="Apri dettaglio"
       >
         <div
-          className="w-full bg-muted/40 relative overflow-hidden"
+          className="w-full bg-secondary/35 relative overflow-hidden"
           style={{ aspectRatio: "16 / 10" }}
         >
           {(!loaded || pending) && (
@@ -93,13 +92,13 @@ export function SiteCard({
             />
           )}
           {liked && (
-            <div className="absolute top-4 right-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
+            <div className="absolute top-4 right-4 rounded-full bg-background/95 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
               <Heart className="size-3.5 fill-current" style={{ color: "var(--like)" }} />
               <span className="text-[10px] font-mono uppercase tracking-wider">Ti piace</span>
             </div>
           )}
           {host && (
-            <div className="absolute bottom-4 left-4 rounded-full bg-background/90 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
+            <div className="absolute bottom-4 left-4 rounded-full bg-background/95 backdrop-blur px-3 py-1.5 flex items-center gap-1.5 shadow-sm pointer-events-none">
               <ExternalLink className="size-3.5" />
               <span className="text-[11px] font-mono uppercase tracking-wider">{host}</span>
             </div>
