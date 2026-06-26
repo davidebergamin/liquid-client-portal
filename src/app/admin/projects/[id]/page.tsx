@@ -1,10 +1,10 @@
-import { CheckCircle2, ExternalLink, FileText, FileStack, Heart, RefreshCw, Wrench } from "lucide-react";
+import { CheckCircle2, FileStack, RefreshCw, Wrench } from "lucide-react";
 import { getPortalProject, getProjectById, projectStatuses, statusLabels, updateChecklistItem, updateProject } from "@/lib/portal";
 import { ChecklistItemToggle } from "@/components/ChecklistItemToggle";
+import { FormSelectField } from "@/components/FormSelectField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 export const dynamic = "force-dynamic";
@@ -25,12 +25,11 @@ export default async function AdminProjectOverviewPage({ params }: { params: Pro
         <Input name="company_name" defaultValue={project.company_name ?? ""} placeholder="Azienda" />
         <Input name="email" defaultValue={project.email ?? ""} placeholder="Email" />
         <Input name="phone" defaultValue={project.phone ?? ""} placeholder="Telefono" />
-        <Select name="status" defaultValue={project.status}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {projectStatuses.map((status) => <SelectItem key={status} value={status}>{statusLabels[status]}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <FormSelectField
+          name="status"
+          defaultValue={project.status}
+          options={projectStatuses.map((status) => ({ value: status, label: statusLabels[status] }))}
+        />
         <Textarea name="next_action" defaultValue={project.next_action ?? ""} placeholder="Prossima azione richiesta" rows={3} />
         <Input name="draft_url" defaultValue={project.draft_url ?? ""} placeholder="Link bozza sito" />
         <Input name="published_url" defaultValue={project.published_url ?? ""} placeholder="Link sito pubblicato" />
@@ -78,99 +77,6 @@ export default async function AdminProjectOverviewPage({ params }: { params: Pro
             ))}
             {!data.payments.some((item: any) => item.client_marked_paid_at && item.status !== "pagato") && <p className="text-sm text-muted-foreground">Nessun segnale aperto.</p>}
           </div>
-        </div>
-
-        {/* ── Brief ── */}
-        <div className="liquid-card rounded-xl border border-border p-5">
-          <SectionTitle eyebrow="Brief" title="Cosa ci ha detto" />
-          <div className="mt-4">
-            {data.brief?.free_notes ? (
-              <div className="rounded-xl border border-border bg-muted/30 p-4">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Note libere</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm">{data.brief.free_notes}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Brief non ancora compilato dal cliente.</p>
-            )}
-            {(data.brief?.business_description || data.brief?.main_services || data.brief?.website_goal) && (
-              <div className="mt-3 grid gap-2 md:grid-cols-2">
-                {[
-                  ["Attività", data.brief?.business_description],
-                  ["Servizi", data.brief?.main_services],
-                  ["Obiettivo sito", data.brief?.website_goal],
-                  ["Pubblico", data.brief?.ideal_audience],
-                  ["CTA", data.brief?.main_cta],
-                  ["Social", data.brief?.social_links],
-                  ["Sito attuale", data.brief?.current_website],
-                ].filter(([, v]) => v).map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-border bg-background p-3">
-                    <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{label}</p>
-                    <p className="mt-1 text-sm">{value}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Stile ── */}
-        <div className="liquid-card rounded-xl border border-border p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionTitle eyebrow="Stile" title="Preferenze visive" />
-            {data.project.creative_direction && (
-              <Badge variant="outline">Direzione: {data.project.creative_direction}</Badge>
-            )}
-          </div>
-          {data.customInspirations?.length > 0 && (
-            <div className="mt-4">
-              <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Link inviati dal cliente</p>
-              <div className="flex flex-wrap gap-2">
-                {data.customInspirations.map((item: any) => (
-                  <a key={item.id} href={item.body} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs hover:bg-accent">
-                    <ExternalLink className="size-3" />{item.body.replace(/^https?:\/\//, "").slice(0, 40)}
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {data.styleReferences.filter((r: any) => r.liked || r.comments.length > 0).length ? (
-              data.styleReferences.filter((r: any) => r.liked || r.comments.length > 0).map((ref: any) => (
-                <div key={ref.id} className="overflow-hidden rounded-lg border border-border">
-                  {ref.image_url && <img src={ref.image_url} alt={ref.title ?? ""} className="h-28 w-full object-cover object-top" />}
-                  <div className="p-3">
-                    <div className="flex items-center gap-2">
-                      <p className="flex-1 truncate text-sm font-medium">{ref.title || "Riferimento"}</p>
-                      {ref.liked && <Heart className="size-3.5 shrink-0 fill-current text-primary" />}
-                    </div>
-                    {ref.comments.map((c: any) => (
-                      <p key={c.id} className="mt-2 border-l-2 border-primary/25 pl-2 text-xs text-muted-foreground">{c.body}</p>
-                    ))}
-                  </div>
-                </div>
-              ))
-            ) : <p className="text-sm text-muted-foreground col-span-full">Nessuna preferenza stile ancora.</p>}
-          </div>
-        </div>
-
-        {/* ── Materiali ── */}
-        <div className="liquid-card rounded-xl border border-border p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <SectionTitle eyebrow="Materiali" title={`File caricati (${data.materials.length})`} />
-          </div>
-          {data.materials.length ? (
-            <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {data.materials.map((m: any) => (
-                <a key={m.id} href={m.signed_url ?? "#"} target="_blank" rel="noreferrer" className="flex items-start gap-3 rounded-lg border border-border bg-background p-3 transition-all hover:border-primary/20 hover:bg-accent">
-                  <FileText className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <div className="min-w-0">
-                    <p className="break-all text-sm font-medium leading-snug">{m.file_name}</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{m.category}{m.note ? ` · ${m.note}` : ""}</p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : <p className="mt-4 text-sm text-muted-foreground">Nessun materiale caricato.</p>}
         </div>
       </section>
     </div>

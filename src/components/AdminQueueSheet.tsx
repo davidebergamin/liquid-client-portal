@@ -36,7 +36,7 @@ export function AdminQueueSheet({ items }: { items: QueueItem[] }) {
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="font-display text-3xl">Da gestire</SheetTitle>
-          <SheetDescription>Revisioni, pagamenti e manutenzioni in attesa.</SheetDescription>
+          <SheetDescription>Revisioni, bozze da consegnare, pagamenti e manutenzioni in attesa.</SheetDescription>
         </SheetHeader>
         <div className="mt-6 space-y-2">
           {items.length ? items.map((item) => {
@@ -44,8 +44,16 @@ export function AdminQueueSheet({ items }: { items: QueueItem[] }) {
               ? "border-l-amber-400"
               : item.queue_type === "maintenance"
               ? "border-l-blue-400"
+              : item.queue_type === "draft"
+              ? "border-l-orange-400"
               : "border-l-violet-400";
-            const typeLabel = item.queue_type === "payment" ? "Pagamento" : item.queue_type === "maintenance" ? "Manutenzione" : "Revisione";
+            const typeLabel = item.queue_type === "payment"
+              ? "Pagamento"
+              : item.queue_type === "maintenance"
+              ? "Manutenzione"
+              : item.queue_type === "draft"
+              ? "Sviluppo sito"
+              : "Revisione";
             return (
               <article key={`${item.queue_type}-${item.id}`} className={`rounded-lg border border-border border-l-[3px] bg-background p-3.5 ${typeColor}`}>
                 <div className="flex items-start justify-between gap-2">
@@ -64,11 +72,15 @@ export function AdminQueueSheet({ items }: { items: QueueItem[] }) {
                 <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
                   {item.queue_type === "payment"
                     ? "Cliente: pagamento effettuato, in attesa di verifica."
+                    : item.queue_type === "draft"
+                    ? item.description || "Materiali ricevuti — consegna la prima bozza al cliente."
                     : item.description || item.comment}
                 </p>
                 {item.project && (
                   <Button asChild size="sm" variant="outline" className="mt-3">
-                    <Link href={`/admin/projects/${item.project.id}`}>Apri progetto</Link>
+                    <Link href={`/admin/projects/${item.project.id}`}>
+                      {item.queue_type === "draft" ? "Apri e carica bozza" : "Apri progetto"}
+                    </Link>
                   </Button>
                 )}
               </article>

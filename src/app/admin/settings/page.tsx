@@ -32,10 +32,20 @@ export default async function AdminSettingsPage() {
               placeholder={PRODUCTION_PORTAL_URL}
             />
             <p className="text-xs text-muted-foreground">
-              Base URL per i link cliente (Copia link). Usa {PRODUCTION_PORTAL_URL} — non client-portal.vercel.app.
+              Base URL per i link cliente in produzione. In locale i link usano automaticamente{" "}
+              {process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}.
             </p>
           </div>
           <Textarea name="payment_notes" defaultValue={settings?.payment_notes ?? ""} placeholder="Note pagamento / causale bonifico" rows={5} />
+
+          <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Link Stripe manutenzione</p>
+            <Input name="stripe_maintenance_15_url" defaultValue={(settings as any)?.stripe_maintenance_15_url ?? ""} placeholder="Abbonamento 15 €/mese (Payment Link Stripe)" />
+            <Input name="stripe_maintenance_30_url" defaultValue={(settings as any)?.stripe_maintenance_30_url ?? ""} placeholder="Abbonamento 30 €/mese" />
+            <Input name="stripe_maintenance_50_url" defaultValue={(settings as any)?.stripe_maintenance_50_url ?? ""} placeholder="Abbonamento 50 €/mese" />
+            <p className="text-xs text-muted-foreground">Usati nel menu a tendina quando crei un nuovo cliente.</p>
+          </div>
+
           <Button type="submit" className="w-full">Salva impostazioni</Button>
         </form>
       </section>

@@ -14,6 +14,7 @@ import {
   submitApprovalFeedback,
   getPortalProject,
   getProjectBySlug,
+  markPortalWelcomeSeen,
   toggleStyleLike,
   updateBrief,
   updateInvoice,
@@ -50,6 +51,7 @@ export default async function ClientPortalPage({ params }: { params: Promise<{ s
         clientMarkPaymentPaid,
         completeMaterials,
         completeOnboarding,
+        markPortalWelcomeSeen,
       }}
     />
   );

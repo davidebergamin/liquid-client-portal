@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { AdminLiveRefresh } from "@/components/AdminLiveRefresh";
+import { CopyClientLink } from "@/components/CopyClientLink";
 import { ProjectNavTabs } from "@/components/ProjectNavTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,8 @@ export default async function AdminProjectLayout({
     );
   }
 
+  const portalUrl = await publicClientPortalUrl(project.slug, settings?.default_public_base_url);
+
   return (
     <main className="liquid-shell min-h-screen bg-background">
       <AdminLiveRefresh />
@@ -43,8 +46,9 @@ export default async function AdminProjectLayout({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Badge>{project.status || "onboarding"}</Badge>
+            <CopyClientLink url={portalUrl} />
             <Button asChild variant="outline">
-              <a href={publicClientPortalUrl(project.slug, settings?.default_public_base_url)} target="_blank" rel="noreferrer">
+              <a href={portalUrl} target="_blank" rel="noreferrer">
                 <ExternalLink className="size-4" /> Portale cliente
               </a>
             </Button>

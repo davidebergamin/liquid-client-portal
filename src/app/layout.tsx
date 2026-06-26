@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, Inter, JetBrains_Mono } from "next/font/google";
-import { WhatsAppWidget } from "@/components/WhatsAppWidget";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -30,7 +29,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="it">
       <body className={`${inter.variable} ${instrument.variable} ${jetBrains.variable}`}>
         {children}
-        <WhatsAppWidget />
         <Toaster position="bottom-right" />
       </body>
     </html>

@@ -60,6 +60,12 @@
   --liquid-mint: oklch(0.82 0.11 170);
   --liquid-indigo: oklch(0.49 0.12 255);
   --liquid-lemon: oklch(0.9 0.12 95);
+  --portal-bg: oklch(0.995 0.003 80);
+  --portal-surface: oklch(1 0 0 / 0.72);
+  --portal-border: oklch(0 0 0 / 0.06);
+  --portal-shadow: 0 24px 80px oklch(0.2 0.02 260 / 0.06);
+  --portal-radius-surface: 1.25rem;
+  --portal-motion: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .dark {
@@ -139,6 +145,189 @@
     background: oklch(0.97 0.08 55);
     color: oklch(0.42 0.14 55);
     border: 1px solid oklch(0.88 0.12 55);
+  }
+
+  .liquid-cta-gradient {
+    background: linear-gradient(135deg, var(--liquid-coral), var(--liquid-indigo));
+    color: oklch(0.99 0.004 255);
+  }
+
+  .liquid-progress-bar {
+    background: linear-gradient(90deg, var(--liquid-coral), var(--liquid-mint), var(--liquid-indigo));
+  }
+
+  .liquid-step-card-coral {
+    background: linear-gradient(160deg, oklch(0.99 0.02 35), oklch(0.995 0.008 255));
+    border-color: oklch(0.88 0.06 35);
+  }
+
+  .liquid-step-card-mint {
+    background: linear-gradient(160deg, oklch(0.98 0.025 170), oklch(0.995 0.008 255));
+    border-color: oklch(0.86 0.05 170);
+  }
+
+  .liquid-step-card-lemon {
+    background: linear-gradient(160deg, oklch(0.99 0.04 95), oklch(0.995 0.008 255));
+    border-color: oklch(0.88 0.08 95);
+  }
+
+  .liquid-step-card-indigo {
+    background: linear-gradient(160deg, oklch(0.97 0.03 255), oklch(0.995 0.008 255));
+    border-color: oklch(0.84 0.05 255);
+  }
+
+  .liquid-welcome-card-coral {
+    background: linear-gradient(135deg, oklch(0.98 0.03 35), oklch(0.99 0.01 255));
+  }
+
+  .liquid-welcome-card-mint {
+    background: linear-gradient(135deg, oklch(0.97 0.025 170), oklch(0.99 0.01 255));
+  }
+
+  .liquid-welcome-card-indigo {
+    background: linear-gradient(135deg, oklch(0.96 0.03 255), oklch(0.99 0.01 255));
+  }
+
+  .portal-bg {
+    background-color: var(--portal-bg);
+  }
+
+  .portal-mesh-bg {
+    background-color: var(--portal-bg);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 10% 0%, oklch(0.72 0.15 35 / 0.07), transparent 50%),
+      radial-gradient(ellipse 70% 50% at 90% 10%, oklch(0.82 0.11 170 / 0.06), transparent 45%),
+      radial-gradient(ellipse 60% 40% at 50% 100%, oklch(0.49 0.12 255 / 0.05), transparent 50%);
+  }
+
+  .portal-welcome-bg {
+    background-color: var(--portal-bg);
+    background-image:
+      radial-gradient(ellipse 90% 70% at 20% -10%, oklch(0.72 0.15 35 / 0.12), transparent 55%),
+      radial-gradient(ellipse 80% 60% at 85% 20%, oklch(0.82 0.11 170 / 0.1), transparent 50%),
+      radial-gradient(ellipse 70% 50% at 50% 100%, oklch(0.49 0.12 255 / 0.08), transparent 55%);
+  }
+
+  .portal-grain::after {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .portal-header-glass {
+    background: var(--portal-surface);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--portal-border);
+  }
+
+  .portal-surface-elevated {
+    border-radius: var(--portal-radius-surface);
+    background: oklch(1 0 0 / 0.85);
+    box-shadow: var(--portal-shadow);
+    border: 1px solid var(--portal-border);
+  }
+
+  .portal-surface-inset {
+    border-radius: calc(var(--portal-radius-surface) - 0.25rem);
+    background: oklch(0 0 0 / 0.03);
+    border: 1px solid var(--portal-border);
+  }
+
+  .portal-cta-glow {
+    box-shadow:
+      0 4px 24px oklch(0.72 0.15 35 / 0.35),
+      0 8px 40px oklch(0.49 0.12 255 / 0.15);
+  }
+
+  .portal-hover-lift {
+    transition: transform 200ms var(--portal-motion), box-shadow 200ms var(--portal-motion);
+  }
+  .portal-hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--portal-shadow);
+  }
+
+  .portal-enter {
+    animation: portal-enter 0.5s var(--portal-motion) both;
+  }
+
+  .portal-stagger-1 { animation-delay: 0.05s; }
+  .portal-stagger-2 { animation-delay: 0.12s; }
+  .portal-stagger-3 { animation-delay: 0.2s; }
+  .portal-stagger-4 { animation-delay: 0.28s; }
+
+  .portal-liquid-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    animation: portal-orb-float 24s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .portal-step-bg-coral {
+    background-image: radial-gradient(ellipse 100% 80% at 0% 0%, oklch(0.72 0.15 35 / 0.06), transparent 55%);
+  }
+  .portal-step-bg-mint {
+    background-image: radial-gradient(ellipse 100% 80% at 100% 0%, oklch(0.82 0.11 170 / 0.06), transparent 55%);
+  }
+  .portal-step-bg-lemon {
+    background-image: radial-gradient(ellipse 100% 80% at 50% 0%, oklch(0.9 0.12 95 / 0.08), transparent 55%);
+  }
+  .portal-step-bg-indigo {
+    background-image: radial-gradient(ellipse 100% 80% at 0% 100%, oklch(0.49 0.12 255 / 0.06), transparent 55%);
+  }
+  .portal-step-bg-gradient {
+    background-image:
+      radial-gradient(ellipse 80% 60% at 0% 0%, oklch(0.72 0.15 35 / 0.05), transparent 50%),
+      radial-gradient(ellipse 80% 60% at 100% 100%, oklch(0.49 0.12 255 / 0.05), transparent 50%);
+  }
+
+  .portal-rail-accent-coral { background: var(--liquid-coral); }
+  .portal-rail-accent-mint { background: var(--liquid-mint); }
+  .portal-rail-accent-lemon { background: var(--liquid-lemon); }
+  .portal-rail-accent-indigo { background: var(--liquid-indigo); }
+  .portal-rail-accent-gradient {
+    background: linear-gradient(90deg, var(--liquid-coral), var(--liquid-indigo));
+  }
+}
+
+@keyframes portal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes portal-orb-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.05); }
+  66% { transform: translate(-20px, 15px) scale(0.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-enter,
+  .portal-stagger-1,
+  .portal-stagger-2,
+  .portal-stagger-3,
+  .portal-stagger-4 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  .portal-liquid-orb {
+    animation: none;
+  }
+  .portal-hover-lift:hover {
+    transform: none;
   }
 }
 

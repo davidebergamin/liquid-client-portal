@@ -5,14 +5,9 @@ import { usePathname } from "next/navigation";
 
 const sections = [
   ["", "Panoramica"],
-  ["/dati", "Dati"],
-  ["/pagamenti", "Pagamenti"],
-  ["/materiali", "Materiali"],
-  ["/brief", "Brief"],
-  ["/stile", "Stile"],
-  ["/revisioni", "Revisioni"],
-  ["/manutenzione", "Manutenzione"],
-  ["/attivita", "Attività"],
+  ["/dati", "Dati e pagamenti"],
+  ["/contenuti", "Materiali e brief"],
+  ["/richieste", "Richieste"],
 ];
 
 export function ProjectNavTabs({ projectId }: { projectId: string }) {

@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, FileText } from "lucide-react";
+import { MaintenanceToggle } from "@/components/MaintenanceToggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listMaintenanceRequests, requireAdmin, updateMaintenanceStatus } from "@/lib/portal";
 
 export const dynamic = "force-dynamic";
@@ -106,23 +106,22 @@ export default async function AdminMaintenancePage() {
                   </div>
 
                   <div className="space-y-3">
-                    <form action={updateMaintenanceStatus} className="space-y-2 rounded-xl border border-border bg-background p-3">
-                      <input type="hidden" name="id" value={request.id} />
-                      <input type="hidden" name="project_id" value={request.project_id} />
-                      <Select name="status" defaultValue={request.status}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ricevuta">Ricevuta</SelectItem>
-                          <SelectItem value="in_lavorazione">In lavorazione</SelectItem>
-                          <SelectItem value="completata">Completata</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button type="submit" className="w-full">Aggiorna stato</Button>
-                    </form>
+                    <MaintenanceToggle
+                      id={request.id}
+                      projectId={request.project_id}
+                      title={request.title}
+                      description=""
+                      requestType={request.request_type}
+                      priority={request.priority}
+                      status={request.status}
+                      attachments={[]}
+                      action={updateMaintenanceStatus}
+                      compact
+                    />
                     {request.project && (
                       <div className="grid gap-2">
                         <Button asChild variant="outline">
-                          <Link href={`/admin/projects/${request.project.id}/manutenzione`}>Apri nel progetto</Link>
+                          <Link href={`/admin/projects/${request.project.id}/richieste`}>Apri nel progetto</Link>
                         </Button>
                         <Button asChild variant="outline">
                           <a href={`/p/${request.project.slug}`} target="_blank" rel="noreferrer">

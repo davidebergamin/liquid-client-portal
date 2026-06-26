@@ -1,7 +1,8 @@
 import "server-only";
 
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
+import { cache } from "react";
+import { cookies, headers } from "next/headers";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
@@ -9,9 +10,11 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const db = () => supabaseAdmin as any;
 const MATERIALS_BUCKET = "project-materials";
+const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 const ADMIN_TOKEN_COOKIE = "liquid_admin_token";
 const LOCAL_ADMIN_COOKIE = "liquid_admin";
 const schemaCapabilityCache = new Map<string, Promise<boolean>>();
+const ensuredProjectDefaults = new Set<string>();
 
 export const projectStatuses = [
   "onboarding",
@@ -38,14 +41,14 @@ export const statusLabels: Record<ProjectStatus, string> = {
 };
 
 export const nextActions: Record<ProjectStatus, string> = {
-  onboarding: "Compila i dati iniziali e i dati per la fattura.",
-  scelta_stile: "Scegli i riferimenti che ti piacciono e conferma la direzione creativa.",
-  raccolta_materiali: "Carica logo, foto e documenti utili.",
-  sviluppo_sito: "Liquid sta lavorando alla prima bozza. Non serve fare nulla ora.",
-  revisione_bozza: "Apri la bozza e invia le richieste di modifica.",
-  approvazione_finale: "Controlla la versione finale e approva la pubblicazione.",
-  pubblicazione: "Liquid pubblichera' il sito dopo approvazione e saldo.",
-  manutenzione_attiva: "Invia qui le richieste di aggiornamento del sito.",
+  onboarding: "Completa acconto e dati di fatturazione per partire.",
+  scelta_stile: "Metti like ai riferimenti che ti piacciono e conferma lo stile.",
+  raccolta_materiali: "Carica logo, testi e foto per la bozza.",
+  sviluppo_sito: "Stiamo costruendo il sito — ti avvisiamo appena c'è da vedere.",
+  revisione_bozza: "Apri la bozza e lascia feedback su cosa cambiare.",
+  approvazione_finale: "Ultimo controllo prima della pubblicazione.",
+  pubblicazione: "Completa saldo e manutenzione per andare online.",
+  manutenzione_attiva: "Invia richieste di aggiornamento quando serve.",
 };
 
 
@@ -196,7 +199,27 @@ function normalizeBaseUrl(url?: string | null) {
   return trimmed;
 }
 
-export function resolvePublicBaseUrl(configuredBase?: string | null) {
+function isLocalHost(host: string) {
+  return /^localhost(?::\d+)?$/i.test(host) || /^127\.0\.0\.1(?::\d+)?$/.test(host);
+}
+
+function localDevBaseUrl() {
+  if (process.env.NODE_ENV !== "development") return null;
+  return normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL) ?? "http://localhost:3000";
+}
+
+export async function resolvePublicBaseUrl(configuredBase?: string | null) {
+  if (process.env.NODE_ENV === "development") {
+    try {
+      const host = (await headers()).get("host");
+      if (host && isLocalHost(host)) return `http://${host}`;
+    } catch {
+      // headers() is only available during a request.
+    }
+    const localBase = localDevBaseUrl();
+    if (localBase) return localBase;
+  }
+
   return (
     normalizeBaseUrl(configuredBase)
     ?? normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL)
@@ -205,8 +228,69 @@ export function resolvePublicBaseUrl(configuredBase?: string | null) {
   );
 }
 
-export function publicClientPortalUrl(slug: string, configuredBase?: string | null) {
-  return `${resolvePublicBaseUrl(configuredBase)}/p/${slug}`;
+export async function publicClientPortalUrl(slug: string, configuredBase?: string | null) {
+  return `${await resolvePublicBaseUrl(configuredBase)}/p/${slug}`;
+}
+
+export const MAINTENANCE_PLAN_AMOUNTS = {
+  "15": 15,
+  "30": 30,
+  "50": 50,
+} as const;
+
+export type MaintenancePlanId = keyof typeof MAINTENANCE_PLAN_AMOUNTS;
+
+export function maintenanceStripeUrl(plan: MaintenancePlanId, settings: Record<string, unknown> | null | undefined) {
+  const map: Record<MaintenancePlanId, string> = {
+    "15": String(settings?.stripe_maintenance_15_url ?? ""),
+    "30": String(settings?.stripe_maintenance_30_url ?? ""),
+    "50": String(settings?.stripe_maintenance_50_url ?? ""),
+  };
+  return map[plan] || null;
+}
+
+export function maintenancePlanOptions(settings: Record<string, unknown> | null | undefined) {
+  return (Object.keys(MAINTENANCE_PLAN_AMOUNTS) as MaintenancePlanId[]).map((plan) => ({
+    value: plan,
+    label: `Manutenzione ${plan} €/mese`,
+    amount: MAINTENANCE_PLAN_AMOUNTS[plan],
+    stripeUrl: maintenanceStripeUrl(plan, settings),
+  }));
+}
+
+async function applyProjectPricing(
+  projectId: string,
+  siteTotal: number,
+  monthlyAmount: number,
+  stripeUrl: string | null,
+  sitePaymentUrl?: string | null,
+) {
+  const depositAmount = siteTotal > 0 ? Math.round((siteTotal / 2) * 100) / 100 : null;
+  const balanceAmount = siteTotal > 0 && depositAmount !== null ? Math.round((siteTotal - depositAmount) * 100) / 100 : null;
+  const now = new Date().toISOString();
+  await Promise.all([
+    db().from("payments").update({
+      title: "Acconto",
+      amount: depositAmount,
+      method: "bonifico",
+      payment_url: sitePaymentUrl,
+      updated_at: now,
+    }).eq("project_id", projectId).eq("type", "acconto"),
+    db().from("payments").update({
+      title: "Saldo finale",
+      amount: balanceAmount,
+      method: "bonifico",
+      payment_url: sitePaymentUrl,
+      updated_at: now,
+    }).eq("project_id", projectId).eq("type", "saldo"),
+    db().from("payments").update({
+      title: "Manutenzione mensile",
+      amount: monthlyAmount || null,
+      method: "stripe",
+      payment_url: stripeUrl,
+      updated_at: now,
+    }).eq("project_id", projectId).eq("type", "manutenzione"),
+  ]);
 }
 
 function slugify(input: string) {
@@ -251,12 +335,37 @@ function optionalColumn(table: string, column: string) {
 }
 
 async function portalCapabilities() {
-  const [bookingUrl, clientMarkedPaidAt] = await Promise.all([
+  return getPortalCapabilitiesCached();
+}
+
+const getPortalCapabilitiesCached = cache(async () => {
+  const [bookingUrl, clientMarkedPaidAt, portalWelcomeSeen] = await Promise.all([
     optionalColumn("portal_settings", "booking_url"),
     optionalColumn("payments", "client_marked_paid_at"),
+    optionalColumn("leads", "portal_welcome_seen_at"),
   ]);
-  return { bookingUrl, clientMarkedPaidAt };
-}
+  return { bookingUrl, clientMarkedPaidAt, portalWelcomeSeen };
+});
+
+const getSharedPortalSettings = unstable_cache(
+  async () => {
+    const { data, error } = await db().from("portal_settings").select("*").eq("id", 1).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ?? null;
+  },
+  ["portal-settings-shared"],
+  { revalidate: 120, tags: ["portal-settings"] },
+);
+
+const getSharedStyleReferences = unstable_cache(
+  async () => {
+    const { data, error } = await db().from("sites").select("*").order("sort_order", { ascending: true });
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  },
+  ["portal-style-references"],
+  { revalidate: 120, tags: ["style-references"] },
+);
 
 function createSupabaseAuthClient() {
   const url = process.env.SUPABASE_URL;
@@ -271,6 +380,8 @@ function createSupabaseAuthClient() {
 }
 
 async function ensureProjectDefaults(projectId: string) {
+  if (ensuredProjectDefaults.has(projectId)) return;
+
   const { data: checklist } = await db()
     .from("project_checklist_items")
     .select("id")
@@ -313,6 +424,8 @@ async function ensureProjectDefaults(projectId: string) {
     .eq("project_id", projectId)
     .maybeSingle();
   if (!brief) await db().from("briefs").insert({ project_id: projectId });
+
+  ensuredProjectDefaults.add(projectId);
 }
 
 export async function requireAdmin() {
@@ -378,39 +491,98 @@ export async function logoutAdmin() {
   redirect("/admin/login");
 }
 
-export async function getProjectBySlug(slug: string) {
+export const getProjectBySlug = cache(async (slug: string) => {
   const { data, error } = await db().from("leads").select("*").eq("slug", slug).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   await ensureProjectDefaults(data.id);
   return data;
-}
+});
 
-export async function getProjectById(id: string) {
+export const getProjectById = cache(async (id: string) => {
   const { data, error } = await db().from("leads").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
   await ensureProjectDefaults(data.id);
   return data;
-}
+});
 
 async function signedMaterials(rows: any[]) {
-  return Promise.all(
-    (rows ?? []).map(async (row) => {
-      const { data } = await db()
-        .storage
-        .from(MATERIALS_BUCKET)
-        .createSignedUrl(row.file_path, 60 * 60 * 24);
-      return { ...row, signed_url: data?.signedUrl ?? null };
-    }),
-  );
+  if (!rows?.length) return [];
+
+  const paths = rows.map((row) => row.file_path).filter(Boolean);
+  if (!paths.length) {
+    return rows.map((row) => ({ ...row, signed_url: row.file_url ?? null }));
+  }
+
+  const { data, error } = await db()
+    .storage
+    .from(MATERIALS_BUCKET)
+    .createSignedUrls(paths, 60 * 60 * 24);
+
+  const urlByPath = new Map<string, string | null>();
+  if (!error && data) {
+    for (const item of data) {
+      if (item?.path) urlByPath.set(item.path, item.signedUrl ?? null);
+    }
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    signed_url: urlByPath.get(row.file_path) ?? row.file_url ?? null,
+  }));
 }
 
-export async function getPortalProject(project: any) {
-  const projectId = project.id;
-  await syncProjectStatusFromProgress(projectId);
-  const { data: refreshedProject } = await db().from("leads").select("*").eq("id", projectId).maybeSingle();
-  if (refreshedProject) project = refreshedProject;
+function uploadErrorMessage(error: { message?: string }, fileName: string) {
+  const msg = error.message ?? "Errore sconosciuto";
+  if (/too large|entity too large|maximum|413|payload|size/i.test(msg)) {
+    return `"${fileName}" è troppo grande. Limite 100 MB per file — prova con uno ZIP compresso.`;
+  }
+  if (/not found|bucket/i.test(msg)) {
+    return "Archivio file temporaneamente non disponibile. Riprova tra poco.";
+  }
+  return `Impossibile caricare "${fileName}": ${msg}`;
+}
+
+async function uploadProjectFile(
+  projectId: string,
+  category: string,
+  file: File,
+  note: string | null,
+) {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(`"${file.name}" supera il limite di 100 MB.`);
+  }
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 160);
+  const ext = safeName.includes(".") ? safeName.split(".").pop() || "bin" : "bin";
+  const path = `${projectId}/${category}/${crypto.randomUUID()}.${ext}`;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error: uploadError } = await db().storage
+    .from(MATERIALS_BUCKET)
+    .upload(path, buffer, { contentType: file.type || "application/octet-stream", upsert: true });
+  if (uploadError) throw new Error(uploadErrorMessage(uploadError, file.name));
+
+  const { error } = await db().from("project_materials").insert({
+    project_id: projectId,
+    category,
+    file_name: file.name,
+    file_path: path,
+    file_type: file.type || null,
+    file_size: file.size,
+    note,
+    uploaded_by: "client",
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function getPortalProject(project: { id: string }) {
+  return getPortalProjectCached(project.id);
+}
+
+const getPortalProjectCached = cache(async (projectId: string) => {
+  const { data: project } = await db().from("leads").select("*").eq("id", projectId).maybeSingle();
+  if (!project) throw new Error("Progetto non trovato");
   const capabilities = await portalCapabilities();
   const [
     checklist,
@@ -431,13 +603,13 @@ export async function getPortalProject(project: any) {
     db().from("payments").select("*").eq("project_id", projectId).order("sort_order"),
     db().from("project_materials").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
     db().from("briefs").select("*").eq("project_id", projectId).maybeSingle(),
-    db().from("sites").select("*").order("sort_order"),
+    getSharedStyleReferences(),
     db().from("likes").select("site_id").eq("lead_id", projectId),
     db().from("comments").select("id,site_id,body,created_at").eq("lead_id", projectId).not("site_id", "is", null).order("created_at", { ascending: false }),
     db().from("comments").select("id,body,created_at").eq("lead_id", projectId).is("site_id", null).order("created_at", { ascending: false }),
     db().from("revision_requests").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
     db().from("maintenance_requests").select("*").eq("project_id", projectId).order("created_at", { ascending: false }),
-    db().from("portal_settings").select("*").eq("id", 1).maybeSingle(),
+    getSharedPortalSettings(),
   ]);
 
   const liked = new Set((likes.data ?? []).map((item: any) => item.site_id));
@@ -476,7 +648,7 @@ export async function getPortalProject(project: any) {
     payments: payments.data ?? [],
     materials: await signedMaterials(materials.data ?? []),
     brief: brief.data ?? null,
-    styleReferences: (references.data ?? []).map((reference: any) => ({
+    styleReferences: references.map((reference: any) => ({
       ...reference,
       liked: liked.has(reference.id),
       comments: commentsBySite.get(reference.id) ?? [],
@@ -487,10 +659,10 @@ export async function getPortalProject(project: any) {
       ...request,
       attachments: attachmentsByMaintenance.get(request.id) ?? [],
     })),
-    settings: settings.data ?? null,
+    settings: settings ?? null,
     capabilities,
   };
-}
+});
 
 export type ClientActivityEvent = {
   id: string;
@@ -650,15 +822,6 @@ export async function listProjects() {
   const { data, error } = await db().from("leads").select("*").order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   let projects = data ?? [];
-  if (projects.length) {
-    await Promise.all(projects.map((project: any) => syncProjectStatusFromProgress(project.id)));
-    const { data: refreshed, error: refreshError } = await db()
-      .from("leads")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (refreshError) throw new Error(refreshError.message);
-    projects = refreshed ?? projects;
-  }
   const ids = projects.map((project: any) => project.id);
   if (!ids.length) return [];
 
@@ -729,7 +892,7 @@ export async function listProjects() {
 export async function listAdminRequestQueue() {
   await requireAdmin();
   const capabilities = await portalCapabilities();
-  const [revisionRes, paymentRes, maintenanceRes] = await Promise.all([
+  const [revisionRes, paymentRes, maintenanceRes, draftRes] = await Promise.all([
     db()
       .from("revision_requests")
       .select("id,project_id,page,section,comment,priority,status,created_at")
@@ -751,22 +914,41 @@ export async function listAdminRequestQueue() {
       .neq("status", "completata")
       .order("created_at", { ascending: false })
       .limit(12),
+    db()
+      .from("leads")
+      .select("id,name,company_name,slug,status,updated_at,draft_url")
+      .eq("status", "sviluppo_sito")
+      .or("draft_url.is.null,draft_url.eq.")
+      .order("updated_at", { ascending: false })
+      .limit(12),
   ]);
   const rows = [
+    ...(draftRes.data ?? []).map((row: any) => ({
+      id: `draft-${row.id}`,
+      project_id: row.id,
+      queue_type: "draft",
+      title: "Sviluppo sito — consegna bozza",
+      description: `${row.company_name || row.name} è in fase sviluppo: prepara il sito e carica il link bozza nel progetto.`,
+      status: "da_fare",
+      priority: "alta",
+      created_at: row.updated_at,
+      project: row,
+    })),
     ...(revisionRes.data ?? []).map((row: any) => ({ ...row, queue_type: "revision" })),
     ...(maintenanceRes.data ?? []).map((row: any) => ({ ...row, queue_type: "maintenance" })),
     ...(paymentRes.data ?? []).map((row: any) => ({ ...row, queue_type: "payment", created_at: row.client_marked_paid_at })),
-  ].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 16);
+  ].sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 20);
 
   const projectIds = Array.from(new Set(rows.map((row: any) => row.project_id).filter(Boolean)));
-  const { data: projects } = projectIds.length
-    ? await db().from("leads").select("id,name,company_name,slug,status").in("id", projectIds)
+  const missingProjectIds = projectIds.filter((id) => !rows.some((row: any) => row.project?.id === id));
+  const { data: projects } = missingProjectIds.length
+    ? await db().from("leads").select("id,name,company_name,slug,status").in("id", missingProjectIds)
     : { data: [] };
   const projectMap = new Map((projects ?? []).map((project: any) => [project.id, project]));
 
   return rows.map((row: any) => ({
     ...row,
-    project: projectMap.get(row.project_id) ?? null,
+    project: row.project ?? projectMap.get(row.project_id) ?? null,
   }));
 }
 
@@ -898,6 +1080,22 @@ export async function createProject(formData: FormData) {
     .single();
   if (error) throw new Error(error.message);
   await ensureProjectDefaults(data.id);
+
+  const siteTotal = Number(value(formData, "site_total") || 0);
+  const maintenancePlan = value(formData, "maintenance_plan");
+  const customMonthly = Number(value(formData, "monthly_amount") || 0);
+  const monthlyAmount = maintenancePlan && maintenancePlan !== "none"
+    ? MAINTENANCE_PLAN_AMOUNTS[maintenancePlan as MaintenancePlanId] ?? customMonthly
+    : customMonthly;
+  const settings = await db().from("portal_settings").select("*").eq("id", 1).maybeSingle();
+  const stripeUrl = maintenancePlan && maintenancePlan !== "none"
+    ? maintenanceStripeUrl(maintenancePlan as MaintenancePlanId, settings.data)
+    : nullableValue(formData, "stripe_url");
+
+  if (siteTotal > 0 || monthlyAmount > 0) {
+    await applyProjectPricing(data.id, siteTotal, monthlyAmount, stripeUrl, nullableValue(formData, "site_payment_url"));
+  }
+
   revalidatePath("/admin");
   redirect(`/admin/projects/${data.id}`);
 }
@@ -1251,6 +1449,25 @@ export async function completeOnboarding(formData: FormData) {
   revalidatePath(`/admin/projects/${project.id}`);
 }
 
+export async function markPortalWelcomeSeen(formData: FormData) {
+  "use server";
+
+  const slug = value(formData, "slug");
+  const project = await getProjectBySlug(slug);
+  if (!project) throw new Error("Progetto non trovato");
+  const capabilities = await portalCapabilities();
+  if (!capabilities.portalWelcomeSeen) return;
+  const { error } = await db()
+    .from("leads")
+    .update({
+      portal_welcome_seen_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", project.id);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/p/${slug}`);
+}
+
 export async function updateBrief(formData: FormData) {
   "use server";
 
@@ -1309,32 +1526,18 @@ export async function uploadMaterial(formData: FormData) {
   "use server";
 
   const slug = value(formData, "slug");
-  const project = await getProjectBySlug(slug);
+  const { data: project } = await db().from("leads").select("id, slug").eq("slug", slug).maybeSingle();
   if (!project) throw new Error("Progetto non trovato");
+
   const files = formData.getAll("files").filter((file): file is File => file instanceof File && file.size > 0);
-  for (const file of files) {
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 160);
-    const ext = safeName.split(".").pop() || "bin";
-    const requestedCategory = value(formData, "category");
-    const category = ["logo", "foto", "documenti"].includes(requestedCategory) ? requestedCategory : "documenti";
-    const path = `${project.id}/${category}/${crypto.randomUUID()}.${ext}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const { error: uploadError } = await db().storage
-      .from(MATERIALS_BUCKET)
-      .upload(path, buffer, { contentType: file.type || "application/octet-stream", upsert: false });
-    if (uploadError) throw new Error(uploadError.message);
-    const { error } = await db().from("project_materials").insert({
-      project_id: project.id,
-      category,
-      file_name: file.name,
-      file_path: path,
-      file_type: file.type || null,
-      file_size: file.size,
-      note: nullableValue(formData, "note"),
-      uploaded_by: "client",
-    });
-    if (error) throw new Error(error.message);
-  }
+  if (!files.length) throw new Error("Seleziona almeno un file da caricare.");
+
+  const requestedCategory = value(formData, "category");
+  const category = ["logo", "foto", "documenti"].includes(requestedCategory) ? requestedCategory : "documenti";
+  const note = nullableValue(formData, "note");
+
+  await Promise.all(files.map((file) => uploadProjectFile(project.id, category, file, note)));
+
   revalidatePath(`/p/${slug}`);
   revalidatePath(`/admin/projects/${project.id}`);
 }
@@ -1525,13 +1728,14 @@ export async function createMaintenance(formData: FormData) {
   const attachmentRows = [];
   for (const file of files) {
     const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "-").slice(0, 160);
-    const ext = safeName.split(".").pop() || "bin";
+    const ext = safeName.includes(".") ? safeName.split(".").pop() || "bin" : "bin";
     const path = `${project.id}/maintenance/${request.id}/${crypto.randomUUID()}.${ext}`;
     const buffer = Buffer.from(await file.arrayBuffer());
+    if (file.size > MAX_UPLOAD_BYTES) throw new Error(`"${file.name}" supera il limite di 100 MB.`);
     const { error: uploadError } = await db().storage
       .from(MATERIALS_BUCKET)
-      .upload(path, buffer, { contentType: file.type || "application/octet-stream", upsert: false });
-    if (uploadError) throw new Error(uploadError.message);
+      .upload(path, buffer, { contentType: file.type || "application/octet-stream", upsert: true });
+    if (uploadError) throw new Error(uploadErrorMessage(uploadError, file.name));
     attachmentRows.push({
       maintenance_request_id: request.id,
       file_name: file.name,
@@ -1615,6 +1819,9 @@ export async function updateSettings(formData: FormData) {
     default_public_base_url: publicBaseUrl,
     updated_at: new Date().toISOString(),
   };
+  if (formData.has("stripe_maintenance_15_url")) patch.stripe_maintenance_15_url = nullableValue(formData, "stripe_maintenance_15_url");
+  if (formData.has("stripe_maintenance_30_url")) patch.stripe_maintenance_30_url = nullableValue(formData, "stripe_maintenance_30_url");
+  if (formData.has("stripe_maintenance_50_url")) patch.stripe_maintenance_50_url = nullableValue(formData, "stripe_maintenance_50_url");
   if (capabilities.bookingUrl) patch.booking_url = nullableValue(formData, "booking_url");
   const { error } = await db().from("portal_settings").upsert(patch, { onConflict: "id" });
   if (error) throw new Error(error.message);
@@ -1639,6 +1846,8 @@ export async function updateProjectStatus(formData: FormData) {
   };
   const { error } = await db().from("leads").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+  const earlierKeys = checklistKeysBefore(status);
+  if (earlierKeys.length) await markChecklist(id, earlierKeys);
   if (status === "manutenzione_attiva") await markChecklist(id, ["maintenance_active"]);
   if (status === "pubblicazione") await markChecklist(id, ["site_published"]);
   // Revalidate client portal too

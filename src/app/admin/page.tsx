@@ -2,14 +2,14 @@ import Link from "next/link";
 import { Clock, ExternalLink } from "lucide-react";
 import { AdminCreateProjectDialog } from "@/components/AdminCreateProjectDialog";
 import { AdminLiveRefresh } from "@/components/AdminLiveRefresh";
+import { AdminProjectStatusForm } from "@/components/AdminProjectStatusForm";
 import { AdminQueueSheet } from "@/components/AdminQueueSheet";
 import { CopyClientLink } from "@/components/CopyClientLink";
 import { DeleteProjectButton } from "@/components/DeleteProjectButton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { deleteProject, getPortalSettings, listAdminRequestQueue, listProjects, logoutAdmin, projectStatuses, publicClientPortalUrl, requireAdmin, statusLabels, updateProjectStatus } from "@/lib/portal";
+import { createProject, deleteProject, getPortalSettings, listAdminRequestQueue, listProjects, logoutAdmin, maintenancePlanOptions, projectStatuses, resolvePublicBaseUrl, requireAdmin, statusLabels, updateProjectStatus } from "@/lib/portal";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +20,9 @@ export default async function AdminPage() {
     getPortalSettings(),
     listAdminRequestQueue(),
   ]);
+  const maintenancePlans = maintenancePlanOptions(settings);
+  const statusOptions = projectStatuses.map((status) => ({ value: status, label: statusLabels[status] }));
+  const clientPortalBase = await resolvePublicBaseUrl(settings?.default_public_base_url);
 
   const totals = projects.reduce(
     (acc: { paid: number; owed: number; mrr: number; mrrConfirmed: number }, project: any) => {
@@ -50,7 +53,7 @@ export default async function AdminPage() {
             <Button asChild variant="outline"><Link href="/admin/style">Moodboard</Link></Button>
             <Button asChild variant="outline"><Link href="/admin/analytics">Analytics</Link></Button>
             <Button asChild variant="outline"><Link href="/admin/settings">Impostazioni</Link></Button>
-            <AdminCreateProjectDialog />
+            <AdminCreateProjectDialog maintenancePlans={maintenancePlans} createAction={createProject} />
             <form action={logoutAdmin}><Button variant="outline">Esci</Button></form>
           </div>
         </div>
@@ -103,7 +106,7 @@ export default async function AdminPage() {
                 </TableHeader>
                 <TableBody>
                   {projects.map((project: any) => {
-                    const url = publicClientPortalUrl(project.slug, settings?.default_public_base_url);
+                    const url = `${clientPortalBase}/p/${project.slug}`;
                     const pay = project.payments_summary;
                     return (
                       <TableRow key={project.id} className="transition-colors hover:bg-accent/65">
@@ -118,16 +121,12 @@ export default async function AdminPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <form action={updateProjectStatus} className="flex min-w-[190px] items-center gap-2">
-                            <input type="hidden" name="id" value={project.id} />
-                            <Select name="status" defaultValue={project.status}>
-                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {projectStatuses.map((status) => <SelectItem key={status} value={status}>{statusLabels[status]}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                            <Button type="submit" size="sm" variant="outline">Salva</Button>
-                          </form>
+                          <AdminProjectStatusForm
+                            projectId={project.id}
+                            status={project.status}
+                            statusOptions={statusOptions}
+                            action={updateProjectStatus}
+                          />
                         </TableCell>
                         <TableCell><PaymentCell payment={pay?.acconto} /></TableCell>
                         <TableCell><PaymentCell payment={pay?.saldo} /></TableCell>
