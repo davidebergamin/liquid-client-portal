@@ -76,6 +76,7 @@ export function ClientPortalExperience({
           brief={data.brief}
           materialsCount={data.materials?.length ?? 0}
           revisionCount={data.revisionRequests?.length ?? 0}
+          isMaintenanceMode={isMaintenanceMode}
         />
       )}
 
