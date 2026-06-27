@@ -103,7 +103,7 @@ export function StyleStep({ slug, data, actions, isReviewingPast = false }: { sl
             <p className="text-sm font-medium">
               {likedCount > 0
                 ? `${likedCount} like — pronto quando vuoi`
-                : "Metti un like o un commento per continuare"}
+                : "Puoi continuare anche senza scegliere una card"}
             </p>
           </div>
           <form action={handleConfirmStyle}>

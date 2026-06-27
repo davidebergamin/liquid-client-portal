@@ -21,6 +21,7 @@ export function StepLayout({
   brief,
   materialsCount,
   revisionCount,
+  showProgress = true,
   showHeader = true,
   children,
 }: {
@@ -38,6 +39,7 @@ export function StepLayout({
   brief: Record<string, string | null> | null;
   materialsCount: number;
   revisionCount: number;
+  showProgress?: boolean;
   showHeader?: boolean;
   children: React.ReactNode;
 }) {
@@ -46,20 +48,22 @@ export function StepLayout({
   return (
     <div className={cn("portal-enter min-h-[calc(100vh-5rem)] px-4 pb-32 pt-6 md:px-8 md:pt-10 lg:px-12", stepAccentBg[activeStep.accent])}>
       <div className="mx-auto w-full max-w-6xl">
-        <StepProgressInline
-          steps={steps}
-          activeIndex={activeIndex}
-          viewIndex={viewIndex}
-          activeStep={activeStep}
-          onSelectStep={onSelectStep}
-          progress={progress}
-          checklist={checklist}
-          styleReferences={styleReferences}
-          customInspirations={customInspirations}
-          brief={brief}
-          materialsCount={materialsCount}
-          revisionCount={revisionCount}
-        />
+        {showProgress && (
+          <StepProgressInline
+            steps={steps}
+            activeIndex={activeIndex}
+            viewIndex={viewIndex}
+            activeStep={activeStep}
+            onSelectStep={onSelectStep}
+            progress={progress}
+            checklist={checklist}
+            styleReferences={styleReferences}
+            customInspirations={customInspirations}
+            brief={brief}
+            materialsCount={materialsCount}
+            revisionCount={revisionCount}
+          />
+        )}
 
         {showHeader && (
           <header className="mb-10 md:mb-14">

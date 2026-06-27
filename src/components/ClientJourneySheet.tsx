@@ -12,10 +12,6 @@ type ActivityItem = { label: string; detail: string; at?: string };
 
 export function ClientJourneySheet({
   progress,
-  steps,
-  activeIndex,
-  viewIndex,
-  onSelectStep,
   checklist,
   styleReferences,
   customInspirations,
@@ -23,6 +19,8 @@ export function ClientJourneySheet({
   materialsCount,
   revisionCount,
   triggerVariant = "outline",
+  triggerLabel,
+  contentMode = "all",
 }: {
   progress: number;
   steps: JourneyStep[];
@@ -36,6 +34,8 @@ export function ClientJourneySheet({
   materialsCount: number;
   revisionCount: number;
   triggerVariant?: "outline" | "ghost";
+  triggerLabel?: string;
+  contentMode?: "all" | "activity" | "checklist";
 }) {
   const likedRefs = styleReferences.filter((ref) => ref.liked);
   const commentedRefs = styleReferences.filter((ref) => ref.comments.length > 0);
@@ -64,6 +64,14 @@ export function ClientJourneySheet({
     ...(materialsCount > 0 ? [{ label: "Materiali", detail: `${materialsCount} file caricati` }] : []),
     ...(revisionCount > 0 ? [{ label: "Revisioni", detail: `${revisionCount} richieste inviate` }] : []),
   ];
+  const showChecklist = contentMode === "all" || contentMode === "checklist";
+  const showActivity = contentMode === "all" || contentMode === "activity";
+  const title = contentMode === "checklist" ? "Checklist" : contentMode === "activity" ? "Cosa hai inserito" : "Riepilogo";
+  const description = contentMode === "checklist"
+    ? "Le cose già completate e quelle che mancano."
+    : contentMode === "activity"
+      ? "Stile scelto, materiali, testi e link che hai condiviso."
+      : "Avanzamento e contenuti condivisi finora.";
 
   return (
     <Sheet>
@@ -78,13 +86,13 @@ export function ClientJourneySheet({
           }
         >
           <ClipboardList className={triggerVariant === "ghost" ? "size-3.5" : "size-3.5 text-primary"} />
-          {triggerVariant === "ghost" ? "Riassunto" : "Il tuo percorso"}
+          {triggerLabel ?? (triggerVariant === "ghost" ? "Cosa hai inserito" : "Il tuo percorso")}
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
-          <SheetTitle className="font-display text-3xl">Dove siamo</SheetTitle>
-          <SheetDescription>Le fasi del progetto e tutto quello che hai condiviso finora.</SheetDescription>
+          <SheetTitle className="font-display text-3xl">{title}</SheetTitle>
+          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
 
         <div className="mt-6 space-y-6">
@@ -98,52 +106,7 @@ export function ClientJourneySheet({
             </div>
           </div>
 
-          <div>
-            <p className="mb-3 text-sm font-medium text-muted-foreground">Fasi del progetto</p>
-            <div className="space-y-2">
-              {steps.map((step, index) => {
-                const done = index < activeIndex;
-                const current = index === activeIndex;
-                const viewing = viewIndex === index;
-                const canNavigate = onSelectStep && index <= activeIndex;
-                const className = `flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-sm transition-colors ${
-                  viewing
-                    ? "border-border bg-muted/50 text-foreground"
-                    : done || current
-                    ? "border-border bg-background text-foreground/80 hover:bg-accent"
-                    : "border-border text-muted-foreground"
-                }`;
-
-                const content = (
-                  <>
-                    <span
-                      className={`grid size-5 shrink-0 place-items-center rounded-full border ${
-                        done ? "border-border bg-muted" : current ? "border-primary/30 bg-primary/10" : "border-border"
-                      }`}
-                    >
-                      {done && <Check className="size-3 text-muted-foreground" />}
-                    </span>
-                    <span className={viewing || current ? "font-medium" : ""}>{step.label}</span>
-                  </>
-                );
-
-                if (canNavigate) {
-                  return (
-                    <button key={step.key} type="button" className={className} onClick={() => onSelectStep(index)}>
-                      {content}
-                    </button>
-                  );
-                }
-
-                return (
-                  <div key={step.key} className={className}>
-                    {content}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
+          {showChecklist && (
           <div>
             <p className="mb-3 text-sm font-medium text-muted-foreground">Checklist</p>
             <div className="space-y-1.5">
@@ -166,8 +129,9 @@ export function ClientJourneySheet({
               ))}
             </div>
           </div>
+          )}
 
-          {activity.length > 0 && (
+          {showActivity && activity.length > 0 && (
             <div>
               <p className="mb-3 text-sm font-medium text-muted-foreground">Cosa hai inserito</p>
               <div className="space-y-2">

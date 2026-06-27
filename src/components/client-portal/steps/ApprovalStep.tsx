@@ -13,7 +13,7 @@ import { PortalPrimaryButton } from "../shared/PortalPrimaryButton";
 import { PortalStepCard } from "../shared/PortalStepCard";
 import { RequestList } from "../shared/RequestList";
 
-export function ApprovalStep({ slug, data, actions, isReviewingPast: _isReviewingPast = false }: { slug: string; data: any; actions: PortalActions; isReviewingPast?: boolean }) {
+export function ApprovalStep({ slug, data, actions }: { slug: string; data: any; actions: PortalActions; isReviewingPast?: boolean }) {
   const router = useRouter();
   const [notes, setNotes] = useState<Array<{ page: string; comment: string }>>([]);
   const [current, setCurrent] = useState({ page: "", comment: "" });

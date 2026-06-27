@@ -4,8 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { BookCallButton } from "@/components/BookCallButton";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { portalCopy } from "../copy";
@@ -15,7 +13,7 @@ import { RequestList } from "../shared/RequestList";
 
 type RevisionNote = { page: string; comment: string };
 
-export function RevisionStep({ slug, data, actions, booking, isReviewingPast: _isReviewingPast = false }: { slug: string; data: any; actions: PortalActions; booking: string; isReviewingPast?: boolean }) {
+export function RevisionStep({ slug, data, actions }: { slug: string; data: any; actions: PortalActions; booking: string; isReviewingPast?: boolean }) {
   const [notes, setNotes] = useState<RevisionNote[]>([]);
   const [current, setCurrent] = useState<RevisionNote>({ page: "", comment: "" });
   const [sent, setSent] = useState(false);
@@ -66,7 +64,6 @@ export function RevisionStep({ slug, data, actions, booking, isReviewingPast: _i
             <p className="text-sm text-muted-foreground">La bozza non è ancora disponibile. Liquid ti avviserà quando è pronta.</p>
           </div>
         )}
-        <BookCallButton url={booking} className="w-full py-6 sm:w-auto sm:py-4" />
       </div>
 
       {data.project.draft_url && (

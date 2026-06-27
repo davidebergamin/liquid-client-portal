@@ -6,11 +6,22 @@ export function RequestList({ items, empty }: { items: any[]; empty: string }) {
     <div className="space-y-3">
       <p className="text-sm font-medium text-muted-foreground">Richieste inviate</p>
       {items.map((item) => (
-        <div key={item.id} className="rounded-xl border border-border bg-background p-4 shadow-sm">
+        <div
+          key={item.id}
+          className={`rounded-xl border p-4 shadow-sm ${
+            item.status === "completata"
+              ? "border-emerald-200 bg-emerald-50/70"
+              : "border-border bg-background"
+          }`}
+        >
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">{item.title || item.page}</p>
-            <Badge variant={item.status === "completata" ? "default" : "outline"} className="text-[10px]">{item.status}</Badge>
-            <Badge variant="outline" className="text-[10px]">{item.priority}</Badge>
+            <Badge
+              variant={item.status === "completata" ? "default" : "outline"}
+              className={item.status === "completata" ? "bg-emerald-600 text-[10px] text-white hover:bg-emerald-600" : "text-[10px]"}
+            >
+              {item.status === "completata" ? "Completata" : item.status}
+            </Badge>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">{item.description || item.comment}</p>
           {item.attachments?.length > 0 && (

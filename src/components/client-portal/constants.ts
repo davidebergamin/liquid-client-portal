@@ -8,7 +8,6 @@ export const statusOrder = [
   "revisione_bozza",
   "approvazione_finale",
   "pubblicazione",
-  "manutenzione_attiva",
 ] as const;
 
 export const portalSteps: JourneyStep[] = [
@@ -58,14 +57,15 @@ export const portalSteps: JourneyStep[] = [
     key: "pubblicazione",
     label: "Online",
     title: "Ultimi passi prima di andare online",
-    summary: "Saldo e manutenzione — poi pubblichiamo il sito.",
+    summary: "Saldo finale — poi pubblichiamo il sito.",
     accent: "gradient",
   },
-  {
-    key: "manutenzione_attiva",
-    label: "Aggiornamenti",
-    title: "Il sito è online — chiedi aggiornamenti quando vuoi",
-    summary: "Testo, immagini, nuove sezioni: invia richieste chiare e tracciabili.",
-    accent: "mint",
-  },
 ];
+
+export const maintenanceStep: JourneyStep = {
+  key: "manutenzione_attiva",
+  label: "Aggiornamenti",
+  title: "Il sito è online",
+  summary: "Testo, immagini, nuove sezioni: invia richieste chiare e tracciabili.",
+  accent: "mint",
+};

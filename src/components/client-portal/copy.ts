@@ -27,7 +27,7 @@ export const portalCopy = {
     ],
   },
   maintenance: {
-    summary: "Il sito è online. Da qui puoi chiederci aggiornamenti quando ne hai bisogno.",
+    summary: "Da qui puoi chiederci aggiornamenti quando ne hai bisogno.",
   },
   gatedDeposit: "Prima sblocchiamo l'acconto e i dati di fatturazione — poi si passa alla parte creativa.",
   onboarding: {
@@ -63,8 +63,9 @@ export const portalCopy = {
   delivery: {
     eyebrow: "Ci siamo quasi",
     title: "Ultimi passi prima di andare online",
-    body: "Grazie per il lavoro fatto insieme. Mancano solo saldo e manutenzione — poi pubblichiamo.",
-    hint: "Completa i due passaggi qui sotto per sbloccare la pubblicazione.",
+    body: "Grazie per il lavoro fatto insieme. Manca solo il saldo — poi pubblichiamo.",
+    hint: "Completa il saldo finale per sbloccare la pubblicazione.",
+    onlinePending: "Abbiamo ricevuto la conferma: mettiamo online il sito al più presto e ti scriviamo appena sarà visibile.",
   },
   toasts: {
     uploadSuccess: "Perfetto, ricevuto!",

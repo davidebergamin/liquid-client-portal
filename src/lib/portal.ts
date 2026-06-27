@@ -80,9 +80,8 @@ const paymentTemplate = [
   { type: "manutenzione", title: "Manutenzione mensile", sort_order: 3 },
 ] as const;
 
-// Checklist keys that represent each phase being completed. When a project
-// reaches a given status, every checklist key belonging to an earlier phase
-// is considered done. Reaching "manutenzione_attiva" completes them all (100%).
+// Checklist keys that represent each phase being completed. Maintenance is
+// deliberately separate from the initial build journey and is enabled manually.
 const statusChecklistKeys: Record<ProjectStatus, readonly string[]> = {
   onboarding: ["deposit_paid", "initial_data_completed"],
   scelta_stile: ["style_chosen"],
@@ -90,7 +89,7 @@ const statusChecklistKeys: Record<ProjectStatus, readonly string[]> = {
   sviluppo_sito: ["draft_received"],
   revisione_bozza: ["revisions_sent"],
   approvazione_finale: ["site_approved"],
-  pubblicazione: ["balance_paid", "site_published", "maintenance_active"],
+  pubblicazione: ["balance_paid", "site_published"],
   manutenzione_attiva: [],
 };
 
@@ -151,7 +150,7 @@ function inferProjectStatus(
 ): ProjectStatus {
   const done = (key: string) => checklist.get(key) === true;
   if (project.maintenance_active || done("maintenance_active")) return "manutenzione_attiva";
-  if (done("site_published") || project.published_url) return "manutenzione_attiva";
+  if (done("site_published") || project.published_url) return "pubblicazione";
   if (done("site_approved")) return "pubblicazione";
   if (done("revisions_sent")) return "approvazione_finale";
   if (done("draft_received") || project.draft_url) return "revisione_bozza";
@@ -821,7 +820,7 @@ export async function listProjects() {
   await requireAdmin();
   const { data, error } = await db().from("leads").select("*").order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  let projects = data ?? [];
+  const projects = data ?? [];
   const ids = projects.map((project: any) => project.id);
   if (!ids.length) return [];
 
@@ -1131,7 +1130,6 @@ export async function updateProject(formData: FormData) {
   }
   if (patch.published_url) {
     await markChecklist(id, ["site_published"]);
-    await advanceProjectStatus(id, "pubblicazione", "manutenzione_attiva");
   }
   if (patch.maintenance_active) {
     await markChecklist(id, ["maintenance_active"]);
@@ -1349,11 +1347,7 @@ export async function clientConfirmFinalPayment(formData: FormData) {
     .eq("project_id", project.id)
     .in("type", ["saldo", "manutenzione"]);
   const saldoPaid = (payments ?? []).some((row: any) => row.type === "saldo" && row.status === "pagato");
-  const maintenancePaid = (payments ?? []).some((row: any) => row.type === "manutenzione" && row.status === "pagato");
-  if (saldoPaid && maintenancePaid) {
-    await markChecklist(project.id, ["balance_paid", "maintenance_active"]);
-    await advanceProjectStatus(project.id, "pubblicazione", "manutenzione_attiva");
-  }
+  if (saldoPaid) await markChecklist(project.id, ["balance_paid"]);
   revalidatePath(`/p/${slug}`);
   revalidatePath("/admin");
   revalidatePath("/admin/manutenzione");
@@ -1397,7 +1391,7 @@ export async function updateChecklistItem(formData: FormData) {
   if (completed && data?.key === "draft_received") await advanceProjectStatus(projectId, "sviluppo_sito", "revisione_bozza");
   if (completed && data?.key === "revisions_sent") await advanceProjectStatus(projectId, "revisione_bozza", "approvazione_finale");
   if (completed && data?.key === "site_approved") await advanceProjectStatus(projectId, "approvazione_finale", "pubblicazione");
-  if (completed && data?.key === "site_published") await advanceProjectStatus(projectId, "pubblicazione", "manutenzione_attiva");
+  if (completed && data?.key === "site_published") await advanceProjectStatus(projectId, "approvazione_finale", "pubblicazione");
   revalidatePath(`/admin/projects/${projectId}`);
 }
 
@@ -1611,7 +1605,12 @@ export async function confirmStyleSelection(formData: FormData) {
     db().from("comments").select("id", { count: "exact", head: true }).eq("lead_id", project.id),
   ]);
   if (!likesCount && !commentsCount) {
-    throw new Error("Metti almeno un like o un commento prima di continuare.");
+    await markChecklist(project.id, ["style_chosen"]);
+    await syncProjectStatusFromProgress(project.id);
+    revalidatePath(`/p/${slug}`);
+    revalidatePath("/admin");
+    revalidatePath(`/admin/projects/${project.id}`);
+    return;
   }
   await markChecklist(project.id, ["style_chosen"]);
   await syncProjectStatusFromProgress(project.id);
@@ -1916,10 +1915,9 @@ export async function getAdminAnalytics() {
   const mrrPotential = maintenancePayments
     .filter((payment: any) => payment.amount)
     .reduce((sum: number, payment: any) => sum + Number(payment.amount ?? 0), 0);
-  const activeMaintenance = projects.filter((project: any) => {
-    const summary = summarizeProjectPayments(paymentsByProject.get(project.id) ?? []);
-    return project.maintenance_active || project.status === "manutenzione_attiva" || summary.mrrConfirmed;
-  }).length;
+  const activeMaintenance = projects.filter((project: any) => (
+    project.maintenance_active || project.status === "manutenzione_attiva"
+  )).length;
 
   const projectsByStatus = projectStatuses.reduce(
     (acc, status) => {

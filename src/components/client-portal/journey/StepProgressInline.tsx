@@ -1,6 +1,7 @@
 "use client";
 
-import { ClientJourneySheet } from "@/components/ClientJourneySheet";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { stepRailAccent } from "../design/tokens";
 import type { JourneyStep } from "../types";
@@ -11,13 +12,6 @@ export function StepProgressInline({
   viewIndex,
   activeStep,
   onSelectStep,
-  progress,
-  checklist,
-  styleReferences,
-  customInspirations,
-  brief,
-  materialsCount,
-  revisionCount,
 }: {
   steps: JourneyStep[];
   activeIndex: number;
@@ -35,6 +29,8 @@ export function StepProgressInline({
   const stepNumber = String(viewIndex + 1).padStart(2, "0");
   const total = String(steps.length).padStart(2, "0");
   const progressPct = Math.round(((viewIndex + 1) / steps.length) * 100);
+  const canGoBack = viewIndex > 0;
+  const canGoForward = viewIndex < activeIndex;
 
   return (
     <div className="mb-8 flex flex-col gap-4 sm:mb-10 sm:flex-row sm:items-center sm:justify-between">
@@ -60,20 +56,30 @@ export function StepProgressInline({
         </p>
       </div>
 
-      <ClientJourneySheet
-        progress={progress}
-        steps={steps}
-        activeIndex={activeIndex}
-        viewIndex={viewIndex}
-        onSelectStep={onSelectStep}
-        checklist={checklist}
-        styleReferences={styleReferences}
-        customInspirations={customInspirations}
-        brief={brief}
-        materialsCount={materialsCount}
-        revisionCount={revisionCount}
-        triggerVariant="ghost"
-      />
+      <div className="flex items-center gap-2 self-start sm:self-auto">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-8 rounded-full"
+          disabled={!canGoBack}
+          onClick={() => onSelectStep(viewIndex - 1)}
+          aria-label="Vai allo step precedente"
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="size-8 rounded-full"
+          disabled={!canGoForward}
+          onClick={() => onSelectStep(viewIndex + 1)}
+          aria-label="Vai allo step successivo"
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
     </div>
   );
 }

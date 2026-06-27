@@ -1,9 +1,8 @@
 import { Sparkles } from "lucide-react";
-import { BookCallButton } from "@/components/BookCallButton";
 import { portalCopy } from "../copy";
 import { PortalSurface } from "../shared/PortalSurface";
 
-export function WaitingStep({ booking }: { booking: string }) {
+export function WaitingStep() {
   return (
     <div className="space-y-8">
       <PortalSurface variant="elevated" className="flex items-start gap-5">
@@ -15,7 +14,6 @@ export function WaitingStep({ booking }: { booking: string }) {
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-base">{portalCopy.waiting.body}</p>
         </div>
       </PortalSurface>
-      <BookCallButton url={booking} variant="outline" className="rounded-full px-6" />
     </div>
   );
 }

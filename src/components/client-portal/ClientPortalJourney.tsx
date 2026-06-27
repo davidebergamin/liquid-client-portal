@@ -16,13 +16,13 @@ export function ClientPortalJourney({
   booking,
   steps,
   activeIndex,
-  activeStep,
   viewIndex,
   viewStep,
   onSelectStep,
   isMaintenanceMode,
   gatedByDeposit,
   progress,
+  clientName,
 }: {
   slug: string;
   data: any;
@@ -30,13 +30,13 @@ export function ClientPortalJourney({
   booking: string;
   steps: JourneyStep[];
   activeIndex: number;
-  activeStep: JourneyStep;
   viewIndex: number;
   viewStep: JourneyStep;
   onSelectStep: (index: number) => void;
   isMaintenanceMode: boolean;
   gatedByDeposit: boolean;
   progress: number;
+  clientName: string;
 }) {
   const isReviewingPast = viewIndex < activeIndex;
 
@@ -58,7 +58,7 @@ export function ClientPortalJourney({
   };
 
   return (
-    <StepLayout {...journeyProps}>
+    <StepLayout {...journeyProps} showProgress={!isMaintenanceMode} showHeader={!isMaintenanceMode}>
       {viewStep.key === "onboarding" && (
         <OnboardingStep slug={slug} data={data} actions={actions} isReviewingPast={isReviewingPast} />
       )}
@@ -68,7 +68,7 @@ export function ClientPortalJourney({
       {viewStep.key === "raccolta_materiali" && (
         <MaterialsStep slug={slug} data={data} actions={actions} isReviewingPast={isReviewingPast} />
       )}
-      {viewStep.key === "sviluppo_sito" && <WaitingStep booking={booking} />}
+      {viewStep.key === "sviluppo_sito" && <WaitingStep />}
       {viewStep.key === "revisione_bozza" && (
         <RevisionStep slug={slug} data={data} actions={actions} booking={booking} isReviewingPast={isReviewingPast} />
       )}
@@ -76,10 +76,10 @@ export function ClientPortalJourney({
         <ApprovalStep slug={slug} data={data} actions={actions} isReviewingPast={isReviewingPast} />
       )}
       {viewStep.key === "pubblicazione" && (
-        <DeliveryStep slug={slug} data={data} booking={booking} actions={actions} isReviewingPast={isReviewingPast} />
+        <DeliveryStep slug={slug} data={data} actions={actions} isReviewingPast={isReviewingPast} />
       )}
       {viewStep.key === "manutenzione_attiva" && (
-        <MaintenanceStep slug={slug} data={data} actions={actions} booking={booking} />
+        <MaintenanceStep slug={slug} data={data} actions={actions} clientName={clientName} />
       )}
     </StepLayout>
   );

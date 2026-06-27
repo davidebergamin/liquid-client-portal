@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { bookingUrl } from "@/components/BookCallButton";
-import { portalSteps, statusOrder } from "./constants";
+import { maintenanceStep, portalSteps, statusOrder } from "./constants";
 import { ClientPortalHeader } from "./ClientPortalHeader";
 import { ClientPortalJourney } from "./ClientPortalJourney";
 import { ClientWelcomeScreen } from "./ClientWelcomeScreen";
@@ -22,8 +22,10 @@ export function ClientPortalExperience({
   const booking = bookingUrl(data.settings);
   const depositPaid = data.payments.some((p: any) => p.type === "acconto" && p.status === "pagato");
   const gatedByDeposit = !depositPaid && data.project.status === "onboarding";
-  const activeIndex = Math.max(statusOrder.indexOf(data.project.status as typeof statusOrder[number]), 0);
-  const isMaintenanceMode = data.project.status === "manutenzione_attiva";
+  const isMaintenanceMode = data.project.status === "manutenzione_attiva" || data.project.maintenance_active;
+  const activeIndex = isMaintenanceMode
+    ? portalSteps.length - 1
+    : Math.max(statusOrder.indexOf(data.project.status as typeof statusOrder[number]), 0);
 
   const steps = useMemo(() => portalSteps, []);
   const activeStep = steps[activeIndex];
@@ -37,7 +39,11 @@ export function ClientPortalExperience({
     previousActiveIndex.current = activeIndex;
   }, [activeIndex]);
 
-  const viewStep = steps[viewIndex] ?? activeStep;
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [viewIndex]);
+
+  const viewStep = isMaintenanceMode ? maintenanceStep : steps[viewIndex] ?? activeStep;
 
   const hasOnboardingProgress =
     data.checklist.some((item: any) => item.completed) ||
@@ -50,15 +56,27 @@ export function ClientPortalExperience({
     !hasOnboardingProgress &&
     data.capabilities?.portalWelcomeSeen !== false;
 
-  const clientName =
-    data.project.company_name ||
-    data.project.name ||
-    "lì";
+  const personName = String(data.project.name ?? "").trim().split(/\s+/)[0];
+  const clientName = personName || data.project.company_name || "lì";
 
   return (
     <main className={showWelcome ? "portal-welcome-bg portal-grain relative min-h-screen overflow-hidden" : "portal-mesh-bg portal-grain relative min-h-screen"}>
       {!showWelcome && (
-        <ClientPortalHeader clientName={clientName} booking={booking} />
+        <ClientPortalHeader
+          clientName={clientName}
+          booking={booking}
+          progress={progress}
+          steps={steps}
+          activeIndex={activeIndex}
+          viewIndex={viewIndex}
+          onSelectStep={setViewIndex}
+          checklist={data.checklist}
+          styleReferences={data.styleReferences}
+          customInspirations={data.customInspirations ?? []}
+          brief={data.brief}
+          materialsCount={data.materials?.length ?? 0}
+          revisionCount={data.revisionRequests?.length ?? 0}
+        />
       )}
 
       {showWelcome ? (
@@ -75,13 +93,13 @@ export function ClientPortalExperience({
           booking={booking}
           steps={steps}
           activeIndex={activeIndex}
-          activeStep={activeStep}
           viewIndex={viewIndex}
           viewStep={viewStep}
           onSelectStep={setViewIndex}
           isMaintenanceMode={isMaintenanceMode}
           gatedByDeposit={gatedByDeposit}
           progress={progress}
+          clientName={clientName}
         />
       )}
     </main>
