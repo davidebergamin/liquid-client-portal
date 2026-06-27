@@ -190,7 +190,10 @@ async function syncProjectStatusFromProgress(projectId: string) {
 export const PRODUCTION_PORTAL_URL = "https://liquid-client-portal.vercel.app";
 
 /** Domains that must never be used for client links (owned by other Vercel projects). */
-const BLOCKED_PUBLIC_BASE_URLS = new Set(["https://client-portal.vercel.app"]);
+const BLOCKED_PUBLIC_BASE_URLS = new Set([
+  "https://client-portal.vercel.app",
+  "https://client-portal-one-tan.vercel.app",
+]);
 
 function normalizeBaseUrl(url?: string | null) {
   const trimmed = url?.trim().replace(/\/$/, "");

@@ -121,4 +121,12 @@ Manual end-to-end checklist:
 
 ## Deploy
 
-Deploy on Vercel with the same environment variables. Set `NEXT_PUBLIC_SITE_URL` and `portal_settings.default_public_base_url` to the production URL so copied client links are correct.
+**Produzione:** https://liquid-client-portal.vercel.app  
+**Progetto Vercel:** `liquid-client-portal`  
+Dettagli completi in [`docs/deployment.md`](docs/deployment.md).
+
+```bash
+npm run deploy:prod
+```
+
+Deploy on Vercel with the same environment variables. Set `NEXT_PUBLIC_SITE_URL` and `portal_settings.default_public_base_url` to `https://liquid-client-portal.vercel.app` so copied client links are correct.

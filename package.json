@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint .",
     "verify": "npm run lint && npm run build",
+    "deploy:prod": "vercel --prod --yes",
     "check:setup": "node scripts/check-setup.mjs",
     "db:push": "supabase db push",
     "format": "prettier --write ."
