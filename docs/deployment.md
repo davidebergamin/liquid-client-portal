@@ -12,10 +12,14 @@
 ## Comandi
 
 ```bash
-# Deploy produzione (usa sempre questo, non altri progetti Vercel)
+# Deploy produzione (alias sempre su liquid-client-portal.vercel.app)
 npm run deploy:prod
+```
 
-# Equivalente manuale
+Lo script `scripts/deploy-prod.sh` esegue `vercel --prod`, poi riassegna l’alias di produzione e rimuove `client-portal-one-tan.vercel.app` se Vercel lo ricrea.
+
+```bash
+# Solo deploy Vercel, senza fix alias (sconsigliato)
 vercel --prod --yes
 ```
 
