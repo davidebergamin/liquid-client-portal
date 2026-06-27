@@ -60,6 +60,9 @@
   --liquid-mint: oklch(0.82 0.11 170);
   --liquid-indigo: oklch(0.49 0.12 255);
   --liquid-lemon: oklch(0.9 0.12 95);
+  --liquid-action: oklch(0.36 0.085 208);
+  --liquid-action-hover: oklch(0.31 0.09 208);
+  --liquid-action-shadow: oklch(0.36 0.085 208 / 0.24);
   --portal-bg: oklch(0.995 0.003 80);
   --portal-surface: oklch(1 0 0 / 0.72);
   --portal-border: oklch(0 0 0 / 0.06);
@@ -148,8 +151,12 @@
   }
 
   .liquid-cta-gradient {
-    background: linear-gradient(135deg, var(--liquid-coral), var(--liquid-indigo));
+    background: var(--liquid-action);
     color: oklch(0.99 0.004 255);
+  }
+
+  .liquid-cta-gradient:hover {
+    background: var(--liquid-action-hover);
   }
 
   .liquid-progress-bar {

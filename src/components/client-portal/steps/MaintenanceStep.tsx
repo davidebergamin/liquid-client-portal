@@ -17,16 +17,32 @@ export function MaintenanceStep({ slug, data, actions, clientName }: { slug: str
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [attachments, setAttachments] = useState<File[]>([]);
+  const attachmentsRef = useRef<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function syncFileInput(files: File[]) {
+    attachmentsRef.current = files;
+    if (!fileInputRef.current) return;
+    const transfer = new DataTransfer();
+    files.forEach((file) => transfer.items.add(file));
+    fileInputRef.current.files = transfer.files;
+  }
 
   function addAttachments(files: FileList | null) {
     if (!files?.length) return;
-    setAttachments((current) => [...current, ...Array.from(files)]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    setAttachments((current) => {
+      const next = [...current, ...Array.from(files)];
+      syncFileInput(next);
+      return next;
+    });
   }
 
   function removeAttachment(index: number) {
-    setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setAttachments((current) => {
+      const next = current.filter((_, itemIndex) => itemIndex !== index);
+      syncFileInput(next);
+      return next;
+    });
   }
 
   function handleMaintenanceSubmit(formData: FormData) {
@@ -43,9 +59,10 @@ export function MaintenanceStep({ slug, data, actions, clientName }: { slug: str
           section ? `Sezione o pagina: ${section}` : null,
           details ? `Descrizione: ${details}` : null,
         ].filter(Boolean).join("\n\n"));
-        attachments.forEach((file) => fd.append("attachments", file));
+        attachmentsRef.current.forEach((file) => fd.append("attachments", file));
         await actions.createMaintenance(fd);
         setAttachments([]);
+        syncFileInput([]);
         toast.success(portalCopy.toasts.maintenanceSent);
         router.refresh();
       } catch (error) {
@@ -115,6 +132,7 @@ export function MaintenanceStep({ slug, data, actions, clientName }: { slug: str
             <input
               ref={fileInputRef}
               id="maintenance-attachments"
+              name="attachments"
               type="file"
               multiple
               className="sr-only"
