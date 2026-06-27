@@ -20,6 +20,7 @@ export function ClientJourneySheet({
   revisionCount,
   triggerVariant = "outline",
   triggerLabel,
+  triggerClassName,
   contentMode = "all",
 }: {
   progress: number;
@@ -35,6 +36,7 @@ export function ClientJourneySheet({
   revisionCount: number;
   triggerVariant?: "outline" | "ghost";
   triggerLabel?: string;
+  triggerClassName?: string;
   contentMode?: "all" | "activity" | "checklist";
 }) {
   const likedRefs = styleReferences.filter((ref) => ref.liked);
@@ -81,8 +83,8 @@ export function ClientJourneySheet({
           size="sm"
           className={
             triggerVariant === "ghost"
-              ? "h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
-              : "h-7 gap-1.5 border-primary/20 px-3 text-[11px] hover:bg-primary/5"
+              ? `h-8 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground ${triggerClassName ?? ""}`
+              : `h-7 gap-1.5 border-primary/20 px-3 text-[11px] hover:bg-primary/5 ${triggerClassName ?? ""}`
           }
         >
           <ClipboardList className={triggerVariant === "ghost" ? "size-3.5" : "size-3.5 text-primary"} />

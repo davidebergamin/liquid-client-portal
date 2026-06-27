@@ -102,7 +102,7 @@ export function ClientWelcomeScreen({
             size="lg"
             disabled={isPending}
             onClick={handleStart}
-            className="h-14 gap-3 rounded-full px-10 text-base font-semibold"
+            className="min-h-12 gap-3 rounded-full px-6 text-base font-semibold sm:min-h-14 sm:px-10"
           >
             {isPending ? "Un attimo…" : portalCopy.welcome.cta}
             <ArrowRight className="size-5 transition-transform group-hover:translate-x-0.5" />

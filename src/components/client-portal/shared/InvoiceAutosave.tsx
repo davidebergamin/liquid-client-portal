@@ -59,7 +59,7 @@ export function InvoiceAutosave({
       <Textarea className="resize-none sm:col-span-2" value={form.values.notes} placeholder="Note fatturazione" rows={3} onChange={(e) => form.setField("notes", e.target.value)} />
       </div>
       {showComplete && (
-      <PortalPrimaryButton type="button" size="lg" disabled={isPending} className="w-full py-7 text-base font-semibold sm:w-auto sm:py-5" onClick={handleComplete}>
+      <PortalPrimaryButton type="button" size="lg" disabled={isPending} className="w-full py-5 text-base font-semibold sm:w-auto" onClick={handleComplete}>
         {isPending ? portalCopy.onboarding.invoiceCompletePending : portalCopy.onboarding.invoiceComplete}
       </PortalPrimaryButton>
       )}

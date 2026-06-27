@@ -65,7 +65,7 @@ export function MaterialUploader({
         <p className="mt-1 text-sm text-muted-foreground">
           Puoi procedere anche se non hai caricato ogni categoria. Potrai sempre aggiungere altro più avanti se serve.
         </p>
-        <PortalPrimaryButton type="button" size="lg" disabled={isPending} className="mt-4 w-full py-7 text-base font-semibold sm:w-auto sm:py-5" onClick={handleComplete}>
+        <PortalPrimaryButton type="button" size="lg" disabled={isPending} className="mt-4 w-full py-5 text-base font-semibold sm:w-auto" onClick={handleComplete}>
           {isPending ? "Sto preparando il prossimo step…" : "Ho caricato tutto, procedi →"}
         </PortalPrimaryButton>
       </div>

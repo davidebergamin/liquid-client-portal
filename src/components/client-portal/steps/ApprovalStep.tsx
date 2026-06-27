@@ -98,12 +98,13 @@ export function ApprovalStep({ slug, data, actions }: { slug: string; data: any;
             rows={3}
             className="resize-none"
           />
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={addNote} disabled={!current.page.trim() || !current.comment.trim()}>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={addNote} disabled={!current.page.trim() || !current.comment.trim()}>
               + Aggiungi nota
             </Button>
             <Button
               type="button"
+              className="w-full sm:w-auto"
               disabled={isPending || (notes.length === 0 && (!current.page.trim() || !current.comment.trim()))}
               onClick={sendFeedback}
             >
@@ -128,7 +129,7 @@ export function ApprovalStep({ slug, data, actions }: { slug: string; data: any;
           </p>
           <form action={actions.approveProject} className="mt-6">
             <input type="hidden" name="slug" value={slug} />
-            <PortalPrimaryButton type="submit" size="lg" className="w-full py-7 text-base font-semibold sm:w-auto sm:py-5">
+            <PortalPrimaryButton type="submit" size="lg" className="w-full py-5 text-base font-semibold sm:w-auto">
               Confermo la versione finale — pubblica →
             </PortalPrimaryButton>
           </form>

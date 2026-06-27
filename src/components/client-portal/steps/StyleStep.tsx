@@ -96,9 +96,9 @@ export function StyleStep({ slug, data, actions, isReviewingPast = false }: { sl
       )}
 
       {!isReviewingPast && (
-      <div className="sticky bottom-6 z-20 mx-auto max-w-xl rounded-full border border-[var(--portal-border)] bg-[var(--portal-surface)] p-2 pl-6 shadow-[var(--portal-shadow)] backdrop-blur-xl">
+      <div className="sticky bottom-3 z-20 mx-auto max-w-xl rounded-3xl border border-[var(--portal-border)] bg-[var(--portal-surface)] p-3 shadow-[var(--portal-shadow)] backdrop-blur-xl sm:bottom-6 sm:rounded-full sm:p-2 sm:pl-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="py-2">
+          <div className="py-1 sm:py-2">
             <p className="text-xs font-medium text-muted-foreground">{portalCopy.style.confirmTitle}</p>
             <p className="text-sm font-medium">
               {likedCount > 0
@@ -108,7 +108,7 @@ export function StyleStep({ slug, data, actions, isReviewingPast = false }: { sl
           </div>
           <form action={handleConfirmStyle}>
             <input type="hidden" name="slug" value={slug} />
-            <PortalPrimaryButton type="submit" size="lg" disabled={isPending} className="h-11 w-full gap-2 sm:w-auto">
+            <PortalPrimaryButton type="submit" size="lg" disabled={isPending} className="w-full gap-2 sm:h-11 sm:w-auto">
               {portalCopy.style.confirmCta}
               <ChevronRight className="size-4" />
             </PortalPrimaryButton>

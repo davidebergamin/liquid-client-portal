@@ -84,12 +84,12 @@ export function OnboardingStep({ slug, data, actions, isReviewingPast = false }:
                 <form action={handleMarkPaid}>
                   <input type="hidden" name="slug" value={slug} />
                   <input type="hidden" name="payment_id" value={acconto?.id ?? ""} />
-                  <PortalPrimaryButton type="submit" size="lg" disabled={isPending} className="w-full py-7 text-base font-semibold">
+                  <PortalPrimaryButton type="submit" size="lg" disabled={isPending} className="w-full py-5 text-base font-semibold">
                     {isPending ? portalCopy.onboarding.markPaidPending : portalCopy.onboarding.markPaidCta}
                   </PortalPrimaryButton>
                 </form>
               ) : (
-                <Button type="button" size="lg" variant="outline" className="w-full py-7 text-base font-semibold" onClick={() => setMarkedPaid(true)}>
+                <Button type="button" size="lg" variant="outline" className="h-auto min-h-11 w-full whitespace-normal py-5 text-center text-base font-semibold leading-tight" onClick={() => setMarkedPaid(true)}>
                   {portalCopy.onboarding.markPaidCta}
                 </Button>
               )}
